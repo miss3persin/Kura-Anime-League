@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Calendar, CheckCircle, RefreshCw, ChevronRight } from "lucide-react";
+import { Zap, Calendar, CheckCircle, RefreshCw, ChevronRight, LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 
@@ -10,8 +10,8 @@ interface SeasonInfo {
     phase: string;
     deadline: string | null;
     deadlineLabel: string | null;
-    activeSeason: any;
-    upcomingSeason: any;
+    activeSeason: { name?: string | null } | null;
+    upcomingSeason: { name?: string | null } | null;
     currentWeek: number;
     totalWeeks: number;
 }
@@ -20,7 +20,7 @@ const PHASE_CONFIG: Record<string, {
     color: string;
     bg: string;
     border: string;
-    icon: any;
+    icon: LucideIcon;
     badge: string;
     title: (s: SeasonInfo) => string;
     subtitle: (s: SeasonInfo) => string;

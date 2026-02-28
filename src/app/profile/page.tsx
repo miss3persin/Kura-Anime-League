@@ -23,11 +23,28 @@ interface UserProfile {
     avatar_url: string;
 }
 
+interface User {
+    id: string;
+    email?: string;
+    user_metadata?: {
+        username?: string;
+    };
+}
+
+interface PickData {
+    id: string;
+    anime_cache: {
+        title_romaji: string;
+        cover_image: string;
+        format: string;
+    };
+}
+
 export default function ProfilePage() {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [picks, setPicks] = useState<Pick[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [seasonName, setSeasonName] = useState<string>("Spring Lineup");
 
     useEffect(() => {
@@ -38,7 +55,7 @@ export default function ProfilePage() {
                 return;
             }
 
-            const currUser = session.user;
+            const currUser = session.user as User;
             setUser(currUser);
 
             // 1. Fetch Profile
@@ -48,7 +65,7 @@ export default function ProfilePage() {
                 .eq('id', currUser.id)
                 .single();
 
-            if (profileData) setProfile(profileData);
+            if (profileData) setProfile(profileData as UserProfile);
 
             // 2. Fetch Picks for the most recent team
             const { data: teamData } = await supabase
@@ -72,7 +89,9 @@ export default function ProfilePage() {
           `)
                     .eq('team_id', teamData.id);
 
-                if (picksData) setPicks(picksData as any);
+                if (picksData) {
+                    setPicks(picksData as unknown as Pick[]);
+                }
             }
 
             const { data: seasonInfo } = await supabase
@@ -133,7 +152,7 @@ export default function ProfilePage() {
                             <img
                                 src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
                                 className="w-full h-full rounded-full bg-[var(--surface-hover)] object-cover"
-                                alt="Avatar"
+                                alt={`${profile?.username || 'User'}'s avatar`}
                             />
                         </div>
                         <div className="text-center md:text-left space-y-4 flex-grow">
@@ -191,7 +210,7 @@ export default function ProfilePage() {
                                     className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-xl group transition-all"
                                 >
                                     <div className="aspect-[3/4] overflow-hidden">
-                                        <img src={pick.anime_cache.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Pick" />
+                                        <img src={pick.anime_cache.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={`${pick.anime_cache.title_romaji} cover`} />
                                     </div>
                                     <div className="p-5">
                                         <h4 className="text-[10px] font-black uppercase tracking-tight truncate mb-1 text-[var(--foreground)]">{pick.anime_cache.title_romaji}</h4>

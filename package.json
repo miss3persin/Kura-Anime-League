@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev-refresh": "node scripts/dev-refresh.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "node -r ts-node/register --test tests/hype-cost.test.js"
+    "test:unit": "tsx --test tests/hype-cost.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
@@ -28,7 +29,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
   }
 }

@@ -50,6 +50,16 @@ interface AniListTrendingResponse {
     }
 }
 
+interface CachedHypeRow {
+    id: number;
+    hype_score: number | null;
+    cost_kp: number;
+    title_romaji?: string;
+    hype_history: HypeHistoryEntry[];
+    average_score?: number | null;
+    status?: string;
+}
+
 export async function GET(request: Request) {
     const unauthorized = requireServiceSecret(request);
 
@@ -63,12 +73,13 @@ export async function GET(request: Request) {
 
         // 2. Get existing anime_cache records
         const ids = trending.map((m) => m.id);
-        const { data: cachedAnime } = await supabaseAdmin
+        const { data: rawCachedAnime } = await supabaseAdmin
             .from('anime_cache')
             .select('id, hype_score, cost_kp, title_romaji, hype_history')
             .in('id', ids);
 
-        const cacheMap: Record<number, any> = {};
+        const cachedAnime = (rawCachedAnime as unknown as CachedHypeRow[]) ?? [];
+        const cacheMap: Record<number, CachedHypeRow> = {};
         if (cachedAnime) {
             for (const a of cachedAnime) cacheMap[a.id] = a;
         }
@@ -89,7 +100,7 @@ export async function GET(request: Request) {
             const newCost = calcCostKp(media, rawHype);
 
             // Price History Logic for multi-range time range toggles
-            let history = (cacheMap[media.id]?.hype_history as HypeHistoryEntry[]) || [];
+            let history = (cacheMap[media.id]?.hype_history) || [];
             if (!Array.isArray(history)) history = [];
             history.unshift({ timestamp: nowDate, price: newCost, hype: rawHype });
             history = history.slice(0, 100); // Keep last 100 snapshots
@@ -122,18 +133,20 @@ export async function GET(request: Request) {
         }
 
         // 5. Drift for non-trending anime
-        const { data: allAnime } = await supabaseAdmin
+        const { data: rawAllAnime } = await supabaseAdmin
             .from('anime_cache')
             .select('id, hype_score, average_score, status, cost_kp, hype_history')
             .not('id', 'in', `(${ids.length > 0 ? ids.join(',') : '0'})`);
 
+        const allAnime = (rawAllAnime as unknown as CachedHypeRow[]) ?? [];
+
         if (allAnime && allAnime.length > 0) {
-            for (const anime of (allAnime as any[])) {
+            for (const anime of allAnime) {
                 // Decay if not trending (-5 to -15 hype drift on 1000 scale)
                 const decayedHype = Math.max(100, (anime.hype_score ?? 500) - Math.floor(Math.random() * 10 + 5));
                 const newCost = calcCostKp(anime, decayedHype);
 
-                let history = (anime.hype_history as HypeHistoryEntry[]) || [];
+                let history = (anime.hype_history) || [];
                 if (!Array.isArray(history)) history = [];
                 history.unshift({ timestamp: nowDate, price: newCost, hype: decayedHype });
                 history = history.slice(0, 100);

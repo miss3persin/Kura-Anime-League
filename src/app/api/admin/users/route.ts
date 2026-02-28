@@ -3,8 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-data";
 
-type ListUsersResponse = Awaited<ReturnType<(typeof supabaseAdmin)["auth"]["admin"]["listUsers"]>>;
-
 interface Profile {
   id: string;
   role: string;

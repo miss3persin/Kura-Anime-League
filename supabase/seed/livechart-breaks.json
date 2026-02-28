@@ -1,8 +1,5 @@
 [
-  {
-    "anilist_id": 123,
-    "status": "hiatus",
-    "next_airing_at": "2026-03-10T18:00:00Z",
-    "note": "Production delay"
-  }
+  { "anilist_id": 1, "status": "hiatus", "next_airing_at": null, "note": "Production delay" },
+  { "anilist_id": 2, "status": "airing", "next_airing_at": 1700000000, "note": "" },
+  { "anilist_id": 3, "status": "finished", "next_airing_at": null, "note": "" }
 ]

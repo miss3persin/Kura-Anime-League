@@ -181,9 +181,10 @@ export async function POST(request: Request) {
             payouts: payoutResults
         });
 
-    } catch (error: any) {
-        console.error('Season End Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error('Season end error:', error);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 

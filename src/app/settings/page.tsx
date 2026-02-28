@@ -2,17 +2,21 @@
 
 import React, { useEffect, useState } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { Settings as SettingsIcon, Shield, Bell, Eye, LogOut, User, Loader2, Save } from "lucide-react";
-import { motion } from "framer-motion";
+import { Shield, Bell, LogOut, User, Loader2, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
+
+interface SettingsUser {
+    id: string;
+    email?: string;
+}
 
 export default function SettingsPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<SettingsUser | null>(null);
     const [username, setUsername] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +32,7 @@ export default function SettingsPage() {
             }
             setUser(session.user);
 
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from("profiles")
                 .select("*")
                 .eq("id", session.user.id)
@@ -45,6 +49,7 @@ export default function SettingsPage() {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!user) return;
         setSaving(true);
         try {
             const { error } = await supabase
@@ -60,9 +65,10 @@ export default function SettingsPage() {
             setModalTitle("PROFILE UPDATED");
             setModalMessage("Your league credentials have been successfully synchronized.");
             setIsModalOpen(true);
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Synchronization failed.";
             setModalTitle("UPDATE FAILED");
-            setModalMessage(err.message);
+            setModalMessage(message);
             setIsModalOpen(true);
         } finally {
             setSaving(false);

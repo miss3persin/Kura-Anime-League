@@ -487,7 +487,7 @@ export default function AdminPage() {
     });
   }, [seasons]);
 
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const springTimeline = useMemo(() => {
     return SPRING_2026_WEEKS.map((week) => {
       const startDate = new Date(week.start);
@@ -592,8 +592,8 @@ export default function AdminPage() {
 
   const handleUserUpdate = useCallback(
     async (userId: string) => {
-      const user = users.find((item) => item.id === userId);
-      if (!user) return;
+      const targetUser = users.find((item) => item.id === userId);
+      if (!targetUser) return;
       setSavingUserId(userId);
       try {
         const token = await getAuthToken();
@@ -605,8 +605,8 @@ export default function AdminPage() {
           },
           body: JSON.stringify({
             userId,
-            role: user.role,
-            isSuspended: user.isSuspended
+            role: targetUser.role,
+            isSuspended: targetUser.isSuspended
           })
         });
         const data = await res.json().catch(() => ({}));
@@ -818,13 +818,17 @@ export default function AdminPage() {
     [getAuthToken, loadLogs, loadPolls]
   );
 
-  const isPreSeason = now < SPRING_2026_START_DATE;
+  const isPreSeason = useMemo(() => now < SPRING_2026_START_DATE, [now]);
   const finalWeek = SPRING_2026_WEEKS[SPRING_2026_WEEKS.length - 1];
-  const timelineMessage = isPreSeason
-    ? `As of ${TODAY_FORMATTER.format(now)} Spring 2026 is still in the pre-season planning window; Week 1 launches April 1-7, 2026.`
-    : currentSpringWeek
-    ? `${currentSpringWeek.label} is live (${currentSpringWeek.range}) and primes the week-by-week premieres before they finish around ${finalWeek.range}.`
-    : `Spring 2026 completes its final scheduled premieres in ${finalWeek.range}.`;
+  const timelineMessage = useMemo(() => {
+    if (isPreSeason) {
+      return `As of ${TODAY_FORMATTER.format(now)} Spring 2026 is still in the pre-season planning window; Week 1 launches April 1-7, 2026.`;
+    }
+    if (currentSpringWeek) {
+      return `${currentSpringWeek.label} is live (${currentSpringWeek.range}) and primes the week-by-week premieres before they finish around ${finalWeek.range}.`;
+    }
+    return `Spring 2026 completes its final scheduled premieres in ${finalWeek.range}.`;
+  }, [isPreSeason, now, currentSpringWeek, finalWeek.range]);
 
   if (forbidden) {
     return (

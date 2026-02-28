@@ -90,9 +90,10 @@ export default function Home() {
           setTrendingShows(data.slice(5, 8));
         }
         setDbError(null);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unable to reach the database.";
         console.error('Failed to sync anime cache:', error);
-        setDbError(error?.message ?? 'Unable to reach the database.');
+        setDbError(message);
       } finally {
         setLoading(false);
       }
@@ -120,7 +121,7 @@ export default function Home() {
             }
           }, 1500);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to verify session for welcome modal", error);
       }
     };
@@ -144,7 +145,7 @@ export default function Home() {
         setHeroContent(nextHero);
         setDisplayConfig({ ...DEFAULT_DISPLAY_CONFIG, ...(data?.config ?? {}) });
         setAnnouncement({ ...DEFAULT_ANNOUNCEMENT, ...(data?.announcement ?? {}) });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to load site content", error);
       }
     };
@@ -316,7 +317,7 @@ export default function Home() {
                 <img
                   src={carouselAnime[activeIndex].banner_image || carouselAnime[activeIndex].cover_image}
                   className="w-full h-full object-cover brightness-[0.4] transition-transform duration-[10s] scale-100 group-hover:scale-105"
-                  alt="Hero Image"
+                  alt={`Promotional banner for ${carouselAnime[activeIndex].title_romaji}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-12 md:p-20 flex flex-col justify-end">
                   <motion.div
@@ -412,7 +413,7 @@ export default function Home() {
                         <img
                           src={show.banner_image || show.cover_image}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-[0.8] group-hover:brightness-100"
-                          alt={show.title_romaji}
+                          alt={`Trending anime: ${show.title_romaji}`}
                         />
                       </div>
                       <div className="p-8 space-y-4">
@@ -493,7 +494,7 @@ export default function Home() {
                     {carouselAnime.slice(0, 5).map((anime, i) => (
                       <div key={i} className="p-5 flex items-center justify-between hover:bg-[var(--surface-hover)] transition-all group">
                         <div className="flex items-center gap-4">
-                          <img src={anime.cover_image} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all" />
+                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all" />
                           <div>
                             <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{anime.title_romaji}</p>
                             <p className="text-[8px] font-black text-accent uppercase tracking-widest">Active Market</p>
@@ -541,7 +542,7 @@ export default function Home() {
                 ].map((usr, i) => (
                   <div key={i} className="bg-[var(--surface-hover)] p-6 rounded-[2.5rem] border border-[var(--border)] flex items-center gap-4 group hover:border-accent/30 transition-all cursor-default">
                     <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-xs">{usr.rank}</div>
-                    <img src={`https://api.dicebear.com/${usr.avatar}`} className="w-10 h-10 rounded-full border border-accent/20" />
+                    <img src={`https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-10 h-10 rounded-full border border-accent/20" />
                     <div>
                       <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{usr.name}</p>
                       <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{usr.kp} Total KP</p>

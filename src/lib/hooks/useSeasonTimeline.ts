@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 export interface SeasonInfoPayload {
   phase: "pre_draft" | "draft_open" | "season_live" | "transfer_review" | "off_season" | "ended";
   deadline: string | null;
   deadlineLabel: string | null;
-  activeSeason: Record<string, any> | null;
-  upcomingSeason: Record<string, any> | null;
+  activeSeason: { name?: string | null; [key: string]: unknown } | null;
+  upcomingSeason: { name?: string | null; [key: string]: unknown } | null;
   currentWeek: number;
   totalWeeks: number;
 }
@@ -36,7 +36,7 @@ export function useSeasonTimeline(): SeasonTimeline {
           currentWeek: data.currentWeek ?? 1,
           totalWeeks: data.totalWeeks ?? 12
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to load season info", error);
       } finally {
         if (active) setLoading(false);
@@ -49,13 +49,12 @@ export function useSeasonTimeline(): SeasonTimeline {
     };
   }, []);
 
-  const getFieldValue = (field: string) => {
-    return (
-      seasonInfo?.activeSeason?.[field] ??
-      seasonInfo?.upcomingSeason?.[field] ??
-      null
-    );
-  };
+  const getFieldValue = useCallback((field: string) => {
+    const activeVal = seasonInfo?.activeSeason?.[field];
+    const upcomingVal = seasonInfo?.upcomingSeason?.[field];
+    const val = activeVal ?? upcomingVal;
+    return typeof val === 'string' ? val : null;
+  }, [seasonInfo]);
 
   const timelineEntries = useMemo(
     () => [
@@ -64,7 +63,7 @@ export function useSeasonTimeline(): SeasonTimeline {
       { label: "Season Ends", field: "end_date", value: getFieldValue("end_date") },
       { label: "Transfer Review Ends", field: "transfer_review_ends_at", value: getFieldValue("transfer_review_ends_at") }
     ],
-    [seasonInfo]
+    [getFieldValue]
   );
 
   return {

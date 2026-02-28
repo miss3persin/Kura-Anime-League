@@ -5,7 +5,7 @@ import { AppShell } from "@/components/ui/app-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
-    Users, Plus, Key, Trophy, ChevronRight, Loader2,
+    Users, Plus, Key, ChevronRight, Loader2,
     Shield, Crown, Copy, Check, Lock, Globe, Swords
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,10 @@ interface League {
 interface User {
     id: string;
     email?: string;
+}
+
+interface MemberLeaguesData {
+    leagues: League | null;
 }
 
 export default function LeaguesPage() {
@@ -64,18 +68,18 @@ export default function LeaguesPage() {
                 member_count: (l.league_members as unknown as [{ count: number }])?.[0]?.count || 0
             })));
         }
+// Get user's leagues
+if (userId) {
+    const { data: rawMemberLeagues } = await supabase
+        .from('league_members')
+        .select('leagues(*)')
+        .eq('user_id', userId);
 
-        // Get user's leagues
-        if (userId) {
-            const { data: memberLeagues } = await supabase
-                .from('league_members')
-                .select('leagues(*)')
-                .eq('user_id', userId);
-
-            if (memberLeagues) {
-                setMyLeagues(memberLeagues.map((m: any) => m.leagues as League).filter(Boolean));
-            }
-        }
+    if (rawMemberLeagues) {
+        const memberLeagues = rawMemberLeagues as unknown as MemberLeaguesData[];
+        setMyLeagues(memberLeagues.map((m) => m.leagues as League).filter(Boolean));
+    }
+}
 
         setLoading(false);
     };
@@ -233,7 +237,7 @@ export default function LeaguesPage() {
                         return (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveView(tab.id as any)}
+                                onClick={() => setActiveView(tab.id as 'my' | 'browse' | 'create' | 'join')}
                                 className={`flex items-center gap-2 px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${activeView === tab.id ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]'}`}
                             >
                                 <Icon size={12} />

@@ -14,9 +14,10 @@ export async function POST(request: Request) {
   try {
     const result = await runRefreshCycle(initiator);
     return NextResponse.json({ success: true, result });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Refresh failed";
     console.error('Refresh cycle failed:', error);
-    return NextResponse.json({ error: error?.message ?? 'Refresh failed' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

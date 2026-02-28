@@ -1,31 +1,32 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { NeonButton } from "@/components/ui/neon-button";
-import { Search, Zap, RefreshCw, Loader2, Check, Star, Heart, Save, User as UserIcon, Clock, Shield } from "lucide-react";
+import {
+  Zap, CheckCircle,
+  Loader2, Search, RefreshCw,
+  Shield, Heart, LayoutGrid, Star
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
-import { Modal } from "@/components/ui/modal";
-import { useRouter } from "next/navigation";
+import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 import { useCountdown } from "@/components/ui/season-banner";
-import { SeasonInfoPayload, useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
+import type { SeasonInfoPayload } from "@/lib/hooks/useSeasonTimeline";
+import { Modal } from "@/components/ui/modal";
 
 interface Anime {
   id: number;
   title_romaji: string;
-  title_english: string;
+  title_english?: string;
   cover_image: string;
-  cost_kp: number;
-  format: string;
-  season_id?: number | null;
-  average_score?: number;
-  genres?: string[];
   banner_image?: string;
-  hype_change?: number;
-  season_uuid?: string;
-  season_name?: string;
-  hype_score?: number;
+  cost_kp: number;
+  average_score: number;
+  hype_score: number;
+  format?: string;
+  genres?: string[];
 }
 
 interface Character {
@@ -33,6 +34,11 @@ interface Character {
   name: string;
   image: string;
   anime_id: number;
+}
+
+interface DraftUser {
+  id: string;
+  email?: string;
 }
 
 const PHASE_ACTIONS: Record<SeasonInfoPayload["phase"], { label: string; href: string; description: string }> = {
@@ -80,14 +86,12 @@ export default function DraftPage() {
   const [starCharId, setStarCharId] = useState<number | null>(null);
   const [waifuId, setWaifuId] = useState<number | null>(null);
   const [budget, setBudget] = useState(20000);
-  const [initialBudget, setInitialBudget] = useState(20000);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<DraftUser | null>(null);
   const [activeTab, setActiveTab] = useState<'anime' | 'characters'>('anime');
   const timeline = useSeasonTimeline();
   const seasonInfo = timeline.seasonInfo;
   const [draftClosed, setDraftClosed] = useState(false);
   const [previewAnime, setPreviewAnime] = useState<Anime[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const phaseBadgeLabel = seasonInfo?.phase
     ? seasonInfo.phase
         .split("_")
@@ -95,7 +99,6 @@ export default function DraftPage() {
         .join(" ")
     : "Pre Draft";
   const seasonDisplayName = seasonInfo?.activeSeason?.name ?? seasonInfo?.upcomingSeason?.name ?? "Season";
-  const upcomingSeasonName = seasonInfo?.upcomingSeason?.name ?? "Next Season";
   const deadlineLabel = seasonInfo?.deadlineLabel ?? "Draft Opens";
   const deadlineValue = seasonInfo?.deadline
     ? new Date(seasonInfo.deadline).toLocaleString("en-US", {
@@ -134,8 +137,8 @@ export default function DraftPage() {
   };
 
   const fetchAnimeBySeason = useCallback(
-    async (seasonIdentifier?: string | number, fallbackSeasonName?: string) => {
-      let query = supabase.from<Anime>('anime_cache').select('*');
+    async (seasonIdentifier?: string | number | null, fallbackSeasonName?: string | null) => {
+      let query = supabase.from('anime_cache').select('*');
       if (typeof seasonIdentifier === 'number') {
         query = query.eq('season_id', seasonIdentifier);
       } else if (typeof seasonIdentifier === 'string') {
@@ -148,17 +151,17 @@ export default function DraftPage() {
         query = query.eq('season_name', fallbackSeasonName);
       }
       const { data } = await query.order('hype_score', { ascending: false });
-      return data ?? [];
+      return (data as Anime[]) ?? [];
     },
     []
   );
 
   const fetchCharacters = useCallback(async () => {
     const { data } = await supabase
-      .from<Character>('character_cache')
+      .from('character_cache')
       .select('*')
       .order('name', { ascending: true });
-    return data ?? [];
+    return (data as Character[]) ?? [];
   }, []);
 
   const refreshSeasonData = useCallback(
@@ -168,13 +171,12 @@ export default function DraftPage() {
       upcomingSeasonId,
       upcomingSeasonName
     }: {
-      activeSeasonId?: string | number;
-      activeSeasonName?: string;
-      upcomingSeasonId?: string | number;
-      upcomingSeasonName?: string;
+      activeSeasonId?: string | number | null;
+      activeSeasonName?: string | null;
+      upcomingSeasonId?: string | number | null;
+      upcomingSeasonName?: string | null;
     }) => {
       setLoading(true);
-      setPreviewLoading(Boolean(upcomingSeasonId ?? upcomingSeasonName));
       try {
         const [animeForSeason, upcomingAnime, characters] = await Promise.all([
           fetchAnimeBySeason(
@@ -193,7 +195,6 @@ export default function DraftPage() {
         console.error("Failed to refresh season data", error);
       } finally {
         setLoading(false);
-        setPreviewLoading(false);
       }
     },
     [fetchAnimeBySeason, fetchCharacters]
@@ -204,9 +205,9 @@ export default function DraftPage() {
       if (!seasonInfo) return;
       setDraftClosed(seasonInfo.phase !== 'draft_open');
       await refreshSeasonData({
-        activeSeasonId: seasonInfo.activeSeason?.id,
+        activeSeasonId: seasonInfo.activeSeason?.id as string | number | null,
         activeSeasonName: seasonInfo.activeSeason?.name,
-        upcomingSeasonId: seasonInfo.upcomingSeason?.id,
+        upcomingSeasonId: seasonInfo.upcomingSeason?.id as string | number | null,
         upcomingSeasonName: seasonInfo.upcomingSeason?.name
       });
 
@@ -216,7 +217,6 @@ export default function DraftPage() {
         const { data: prof } = await supabase.from('profiles').select('total_kp').eq('id', session.user.id).single();
         if (prof) {
           setBudget(prof.total_kp);
-          setInitialBudget(prof.total_kp);
         }
       }
     };
@@ -230,9 +230,9 @@ export default function DraftPage() {
       const result = await response.json();
       if (result.data?.success) {
         await refreshSeasonData({
-          activeSeasonId: seasonInfo?.activeSeason?.id,
+          activeSeasonId: seasonInfo?.activeSeason?.id as string | number | null,
           activeSeasonName: seasonInfo?.activeSeason?.name,
-          upcomingSeasonId: seasonInfo?.upcomingSeason?.id,
+          upcomingSeasonId: seasonInfo?.upcomingSeason?.id as string | number | null,
           upcomingSeasonName: seasonInfo?.upcomingSeason?.name
         });
         showAlert("Sync Complete", `Imported ${result.data.count} titles.`);
@@ -294,409 +294,361 @@ export default function DraftPage() {
 
       if (teamError) throw teamError;
 
-      await supabase.from('team_picks').delete().eq('team_id', teamData.id);
+      const castedTeamData = teamData as { id: string };
+
+      await supabase.from('team_picks').delete().eq('team_id', castedTeamData.id);
       const picks = selectedAnimeIds.map(id => ({
-        team_id: teamData.id,
+        team_id: castedTeamData.id,
         anime_id: id
       }));
       await supabase.from('team_picks').insert(picks);
 
-      await supabase.from('character_picks').delete().eq('team_id', teamData.id);
+      await supabase.from('character_picks').delete().eq('team_id', castedTeamData.id);
       const charPicks = [];
-      if (starCharId) charPicks.push({ team_id: teamData.id, character_id: starCharId, pick_type: 'STAR_CHAR' });
-      if (waifuId) charPicks.push({ team_id: teamData.id, character_id: waifuId, pick_type: 'WAIFU_HUSBANDO' });
+      if (starCharId) charPicks.push({ team_id: castedTeamData.id, character_id: starCharId, pick_type: 'STAR_CHAR' });
+      if (waifuId) charPicks.push({ team_id: castedTeamData.id, character_id: waifuId, pick_type: 'WAIFU_HUSBANDO' });
       if (charPicks.length > 0) {
         await supabase.from('character_picks').insert(charPicks);
       }
 
       showAlert("Team Deployed", "Your tactical lineup has been synchronized with the league servers. 🏮");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
       console.error(err);
-      showAlert("System Error", err.message);
+      showAlert("System Error", message);
     } finally {
       setSaving(false);
     }
   };
 
-  const filteredAnime = animeList.filter(anime =>
-    anime.title_romaji.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    anime.title_english?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAnime = animeList.filter(a =>
+    a.title_romaji.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.title_english?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredChars = characterList.filter(char =>
-    char.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCharacters = characterList.filter(c =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const previewCharacters = useMemo(() => {
-    const previewIds = new Set(previewAnime.map((anime) => anime.id));
-    return characterList.filter((character) => previewIds.has(character.anime_id));
-  }, [characterList, previewAnime]);
 
   return (
     <AppShell>
       <div className="space-y-10">
-        {loading ? (
-          <div className="flex items-center justify-center py-64">
-            <Loader2 className="animate-spin text-accent" size={48} />
+        {/* Cinematic Header HUD */}
+        <div className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-[3.5rem] p-10 md:p-14 shadow-2xl">
+          <div className="absolute top-0 right-0 p-16 opacity-[0.03] rotate-12 pointer-events-none">
+            <LayoutGrid size={320} />
           </div>
-        ) : !user ? (
-          <div className="flex flex-col items-center justify-center py-48 space-y-8 bg-[var(--surface)] rounded-[3rem] border border-dashed border-[var(--border)] p-12 text-center">
-            <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10">
-              <UserIcon size={40} />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-3 h-3 rounded-full ${phaseDotClasses}`} />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">{phaseBadgeLabel}</span>
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">
+                  The Draft
+                </h1>
+                <p className="text-sm md:text-base text-[var(--muted)] font-bold uppercase tracking-[0.2em]">
+                  {seasonDisplayName} <span className="mx-3 opacity-30">|</span> 20,000 KP Operational Budget
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-4 pt-4">
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl px-6 py-4 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">{deadlineLabel}</p>
+                  <p className="text-sm font-black text-[var(--foreground)]">{deadlineValue}</p>
+                </div>
+                {hasCountdown && (
+                  <div className="flex gap-2">
+                    {countdownSegments.map((seg) => (
+                      <div key={seg.label} className="w-14 h-14 rounded-2xl bg-accent/5 border border-accent/20 flex flex-col items-center justify-center shadow-lg">
+                        <span className="text-lg font-black text-accent leading-none">{String(seg.value).padStart(2, '0')}</span>
+                        <span className="text-[7px] font-black uppercase text-accent/60">{seg.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="space-y-4 max-w-md">
-              <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Access Restricted</h3>
-              <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs leading-relaxed">
-                You must be an authorized member of the Kura Anime League to access the seasonal drafting interface.
+
+            <div className="flex flex-col gap-4 min-w-[280px]">
+              <div className="bg-[var(--background)] border border-[var(--border)] rounded-3xl p-8 space-y-6 shadow-xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                  <Zap size={40} className="text-accent" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Remaining Credits</p>
+                  <p className={`text-4xl font-black italic tracking-tighter font-outfit transition-colors ${budgetTone}`}>
+                    {budget.toLocaleString()} <span className="text-xs uppercase align-middle ml-1">KP</span>
+                  </p>
+                </div>
+                <div className="w-full bg-[var(--surface-hover)] h-1.5 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: "100%" }}
+                    animate={{ width: `${(budget / 20000) * 100}%` }}
+                    className="h-full bg-accent shadow-[0_0_15px_var(--accent)]"
+                  />
+                </div>
+                <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest text-center opacity-60">
+                  Transaction encryption active
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Phase Narrative Card */}
+        <div className="bg-accent/5 border border-accent/20 rounded-[2.5rem] p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 group hover:bg-accent/10 transition-all shadow-lg">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-white shadow-2xl shadow-accent/40 rotate-3 group-hover:rotate-0 transition-transform">
+              <Shield size={32} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-black uppercase italic tracking-tight text-[var(--foreground)]">{phaseBadgeLabel} Phase Active</h3>
+              <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest max-w-lg leading-relaxed">
+                {phaseAction.description}
               </p>
             </div>
-            <NeonButton onClick={() => router.push('/login')} className="px-10 py-5">
-              Log In to Start Draft
-            </NeonButton>
           </div>
-        ) : (
-          <>
-            {/* Header Control Panel */}
-            <div className="relative grid gap-6 bg-[var(--surface)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-2xl backdrop-blur-xl transition-all">
-              <div className="grid gap-6 lg:grid-cols-[1.35fr,0.95fr]">
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">Draft Season</h2>
-                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">{seasonDisplayName}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[10px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full border border-[var(--border)]">
-                        {phaseBadgeLabel}
-                      </span>
-                      {seasonInfo && (
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
-                          <div
-                            className={`w-2 h-2 rounded-full ${phaseDotClasses} animate-pulse`}
-                          />
-                          <span>{seasonInfo.phase === "draft_open" ? "Draft Open" : "Phase Locked"}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Tactical Budget</p>
-                      <p className={`text-sm font-black uppercase tracking-[0.2em] ${budgetTone}`}>
-                        {budget.toLocaleString()} KP
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Squad Formation</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-3 h-1.5 rounded-full ${i < selectedAnimeIds.length ? "bg-accent" : "bg-[var(--border)]"}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--foreground)]">{selectedAnimeIds.length}/5</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">{deadlineLabel}</p>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--foreground)]">{deadlineValue}</p>
-                    </div>
-                  </div>
-                  {seasonInfo && (
-                    <div className="rounded-3xl border border-[var(--border)] bg-[var(--background)] p-5 shadow-inner">
-                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">{phaseAction.description}</p>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[11px] font-black uppercase tracking-[0.35em] text-[var(--foreground)]">
-                              {seasonInfo.phase === "draft_open" ? "Draft window live" : "Phase countdown"}
-                            </span>
-                            <span className="hidden sm:inline text-[9px] uppercase tracking-[0.3em] text-[var(--muted)]">{seasonDisplayName}</span>
-                          </div>
-                        </div>
-                        {hasCountdown && (
-                          <div className="grid grid-cols-4 gap-2">
-                            {countdownSegments.map((segment) => (
-                              <div
-                                key={segment.label}
-                                className="flex flex-col items-center justify-center rounded-2xl border border-[var(--border)] bg-black/15 px-3 py-2"
-                              >
-                                <span className="text-sm font-black uppercase tracking-[0.3em] text-[var(--foreground)]">
-                                  {String(segment.value).padStart(2, "0")}
-                                </span>
-                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
-                                  {segment.label}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">
-                          {seasonInfo.deadlineLabel ?? "Next Deadline"}
-                        </p>
-                        <NeonButton onClick={() => router.push(phaseAction.href)} className="px-6 py-3">
-                          {phaseAction.label}
-                        </NeonButton>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-6">
-                  <div className="flex gap-2 p-1 bg-[var(--background)] rounded-xl w-fit border border-[var(--border)]">
-                    <button
-                      onClick={() => setActiveTab('anime')}
-                      className={getTabButtonClass('anime')}
-                    >
-                      Show Selection
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('characters')}
-                      className={getTabButtonClass('characters')}
-                    >
-                      Special Picks
-                    </button>
-                  </div>
-                  <div className="relative w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
-                    <input
-                      className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] rounded-xl pl-12 pr-6 py-3 text-sm focus:outline-none focus:border-accent transition-all w-full cursor-pointer"
-                      placeholder={activeTab === 'anime' ? "Search series..." : "Search characters..."}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex gap-4 w-full sm:w-auto">
-                    <NeonButton variant="outline" onClick={handleSync} disabled={syncing} className="px-4">
-                      {syncing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-                    </NeonButton>
-                    <NeonButton onClick={handleSaveTeam} disabled={saving || draftClosed} className="flex-grow sm:flex-grow-0">
-                      {(saving || draftClosed) ? (
-                        <div className="flex items-center gap-2">
-                          {saving ? <Loader2 className="animate-spin" size={16} /> : <Shield size={16} />}
-                          <span>{draftClosed ? 'Drafting Locked' : 'Synchronizing...'}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Save size={16} />
-                          <span>Deploy Tactical Team</span>
-                        </div>
-                      )}
-                    </NeonButton>
-                  </div>
-                </div>
-              </div>
+          <NeonButton onClick={() => router.push(phaseAction.href)} className="w-full md:w-auto px-10 py-4 shadow-xl">
+            {phaseAction.label}
+          </NeonButton>
+        </div>
 
-              {seasonInfo?.upcomingSeason && (
-                <div className="space-y-4 rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-2xl">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">Next Season Preview</p>
-                      <h3 className="text-3xl font-black uppercase tracking-tight text-[var(--foreground)]">
-                        {seasonInfo.upcomingSeason.name ?? "Upcoming Season"}
+        {/* Search & Tabs HUD */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+          <div className="flex gap-2 p-1.5 bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-sm">
+            <button
+              onClick={() => setActiveTab('anime')}
+              className={getTabButtonClass('anime')}
+            >
+              Anime Series
+            </button>
+            <button
+              onClick={() => setActiveTab('characters')}
+              className={getTabButtonClass('characters')}
+            >
+              Star Recruits
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition-colors group-focus-within:text-accent" size={16} />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl pl-12 pr-6 py-4 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64 shadow-sm"
+              />
+            </div>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] hover:border-accent/20 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+              title="Refresh seasonal data"
+            >
+              <RefreshCw className={`transition-transform ${syncing ? 'animate-spin' : ''}`} size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Catalog Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-2">
+          {loading ? (
+            Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="bg-[var(--surface)] aspect-[3/4.5] rounded-3xl border border-[var(--border)] animate-pulse shadow-sm" />
+            ))
+          ) : activeTab === 'anime' ? (
+            filteredAnime.map((anime) => {
+              const isSelected = selectedAnimeIds.includes(anime.id);
+              return (
+                <motion.div
+                  layout
+                  key={anime.id}
+                  whileHover={{ y: -8 }}
+                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isSelected ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
+                >
+                  <div className="aspect-[3/4] overflow-hidden relative">
+                    <img src={anime.cover_image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${anime.title_romaji} cover`} />
+                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                      <p className="text-[10px] font-black text-white italic">{anime.cost_kp.toLocaleString()} KP</p>
+                    </div>
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-accent/20 flex items-center justify-center backdrop-blur-[2px]">
+                        <div className="w-14 h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
+                          <CheckCircle size={32} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] truncate group-hover:text-accent transition-colors italic leading-tight">
+                        {anime.title_romaji}
                       </h3>
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--muted)]">
-                        Browse the anime & characters that will be available once draft opens.
+                      <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">
+                        {anime.format} <span className="mx-1">•</span> {anime.genres?.[0] || 'Original'}
                       </p>
                     </div>
-                    <div className="flex gap-3 flex-wrap">
-                      <NeonButton variant="outline" onClick={() => router.push('/draft')}>
-                        View Draft Board
-                      </NeonButton>
-                      <NeonButton onClick={() => router.push('/hype')} variant="outline">
-                        Track Hype
-                      </NeonButton>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Star size={12} className="text-yellow-500 fill-yellow-500" />
+                        <span className="text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}</span>
+                      </div>
+                      <button
+                        onClick={() => toggleSelectAnime(anime)}
+                        disabled={draftClosed}
+                        className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${isSelected ? 'bg-[var(--background)] text-[var(--muted)] border border-[var(--border)]' : 'bg-accent text-white shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                      >
+                        {isSelected ? 'Remove' : 'Draft'}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6">
-                    {previewLoading ? (
-                      <div className="flex justify-center py-10">
-                        <Loader2 size={24} className="animate-spin text-accent" />
+                </motion.div>
+              );
+            })
+          ) : (
+            filteredCharacters.map((char) => {
+              const isStar = starCharId === char.id;
+              const isWaifu = waifuId === char.id;
+              return (
+                <motion.div
+                  layout
+                  key={char.id}
+                  whileHover={{ y: -8 }}
+                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isStar || isWaifu ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
+                >
+                  <div className="aspect-square overflow-hidden relative">
+                    <img src={char.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${char.name} profile`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    {(isStar || isWaifu) && (
+                      <div className="absolute top-4 right-4 w-10 h-10 bg-accent text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white/20">
+                        {isStar ? <Star size={20} /> : <Heart size={20} />}
                       </div>
-                    ) : previewAnime.length ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {previewAnime.map((anime) => (
-                          <div
-                            key={anime.id}
-                            className="space-y-2 rounded-2xl border border-[var(--border)] bg-black/20 p-3 text-center transition-all hover:border-accent/40"
-                          >
-                            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-[var(--border)]">
-                              <img
-                                src={anime.banner_image || anime.cover_image}
-                                alt={anime.title_romaji}
-                                className="h-full w-full object-cover transition-all"
-                              />
-                            </div>
-                            <h4 className="text-[10px] font-black uppercase tracking-tight text-[var(--foreground)]">
-                              {anime.title_romaji}
-                            </h4>
-                            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
-                              {anime.cost_kp.toLocaleString()} KP
-                            </p>
-                            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-green-400">
-                              {anime.hype_change >= 0 ? "+" : ""}
-                              {anime.hype_change ?? 0}% hype
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-center text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">
-                        Upcoming season data is syncing - check back in a few minutes.
-                      </p>
                     )}
                   </div>
-
-                  {previewCharacters.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">
-                          Featured characters tied to these shows
-                        </p>
-                        <span className="text-[8px] uppercase tracking-[0.3em] text-[var(--muted)]">
-                          {previewCharacters.length} on deck
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-                        {previewCharacters.slice(0, 6).map((character) => (
-                          <div
-                            key={character.id}
-                            className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-2"
-                          >
-                            <img
-                              src={character.image}
-                              alt={character.name}
-                              className="h-12 w-12 rounded-xl object-cover"
-                            />
-                            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
-                              {character.name}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="p-6 space-y-4 text-center">
+                    <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] group-hover:text-accent transition-colors italic truncate leading-tight">
+                      {char.name}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setStarCharId(isStar ? null : char.id)}
+                        disabled={draftClosed}
+                        className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all cursor-pointer ${isStar ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-yellow-500 border border-transparent hover:border-yellow-500/20'}`}
+                      >
+                        Hero
+                      </button>
+                      <button
+                        onClick={() => setWaifuId(isWaifu ? null : char.id)}
+                        disabled={draftClosed}
+                        className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all cursor-pointer ${isWaifu ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-pink-500 border border-transparent hover:border-pink-500/20'}`}
+                      >
+                        Waifu
+                      </button>
                     </div>
-                  )}
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Selection Sidebar (Mobile) & Fixed Summary HUD */}
+        <AnimatePresence>
+          {selectedAnimeIds.length > 0 && (
+            <motion.div
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-4xl"
+            >
+              <div className="bg-black/80 backdrop-blur-2xl border-2 border-white/10 rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent pointer-events-none" />
+
+                <div className="flex items-center gap-6 relative z-10">
+                  <div className="flex -space-x-4">
+                    {selectedAnimeIds.slice(0, 5).map((id) => {
+                      const anime = animeList.find(a => a.id === id);
+                      return (
+                        <div key={id} className="w-14 h-14 rounded-2xl border-4 border-black bg-[var(--surface)] overflow-hidden shadow-xl">
+                          <img src={anime?.cover_image} className="w-full h-full object-cover" alt={`${anime?.title_romaji} thumbnail`} />
+                        </div>
+                      );
+                    })}
+                    {Array.from({ length: Math.max(0, 5 - selectedAnimeIds.length) }).map((_, i) => (
+                      <div key={i} className="w-14 h-14 rounded-2xl border-4 border-black bg-[var(--surface-hover)] border-dashed border-[var(--muted)]/30 flex items-center justify-center text-[var(--muted)]/40 font-black text-xl">
+                        +
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Active Roster</p>
+                    <p className="text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Series Operational</p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Selected Summary HUD */}
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-              <div className={`flex flex-col items-center justify-center p-2 rounded-2xl border-2 border-dashed transition-all ${starCharId ? 'border-yellow-500 bg-yellow-500/5 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'border-[var(--border)] opacity-40'}`}>
-                {starCharId ? (
-                  <>
-                    <img src={characterList.find(c => c.id === starCharId)?.image} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-yellow-500/50" alt="Star" />
-                    <Star size={10} className="text-yellow-500 mt-1 fill-yellow-500" />
-                  </>
-                ) : (
-                  <>
-                    <Star size={12} className="text-[var(--muted)]" />
-                    <span className="text-[6px] font-black uppercase text-[var(--muted)] mt-1">STAR HERO</span>
-                  </>
-                )}
-              </div>
-
-              <div className={`flex flex-col items-center justify-center p-2 rounded-2xl border-2 border-dashed transition-all ${waifuId ? 'border-pink-500 bg-pink-500/5 shadow-[0_0_15px_rgba(236,72,153,0.1)]' : 'border-[var(--border)] opacity-40'}`}>
-                {waifuId ? (
-                  <>
-                    <img src={characterList.find(c => c.id === waifuId)?.image} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-pink-500/50" alt="Waifu" />
-                    <Heart size={10} className="text-pink-500 mt-1 fill-pink-500" />
-                  </>
-                ) : (
-                  <>
-                    <Heart size={12} className="text-[var(--muted)]" />
-                    <span className="text-[6px] font-black uppercase text-[var(--muted)] mt-1">WAIFU/HUSB</span>
-                  </>
-                )}
-              </div>
-
-              {Array.from({ length: 5 }).map((_, i) => {
-                const anime = animeList.find(a => a.id === selectedAnimeIds[i]);
-                return (
-                  <div key={i} className={`aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-1 md:p-2 text-center space-y-1 transition-all ${anime ? 'border-accent bg-accent/5' : 'border-[var(--border)] opacity-20'}`}>
-                    {anime ? (
-                      <>
-                        <img src={anime.cover_image} className="w-8 h-8 md:w-10 md:h-10 rounded-lg object-cover" alt="Anime" />
-                        <p className="text-[6px] md:text-[7px] font-black uppercase text-accent truncate w-full px-1">{anime.title_romaji}</p>
-                      </>
-                    ) : (
-                      <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-[var(--muted)] opacity-30"></div>
-                    )}
+                <div className="flex items-center gap-6 relative z-10">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Projected Impact</p>
+                    <p className="text-lg font-black text-white italic">{(20000 - budget).toLocaleString()} KP Allocated</p>
                   </div>
-                );
-              })}
+                  <button
+                    onClick={handleSaveTeam}
+                    disabled={saving || draftClosed}
+                    className="px-10 py-4 bg-accent text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:opacity-90 transition-all shadow-xl shadow-accent/40 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {saving ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
+                    {saving ? 'SYNCHRONIZING...' : 'LOCK LINEUP'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Empty Catalog State */}
+        {!loading && filteredAnime.length === 0 && (
+          <div className="text-center py-40 bg-[var(--surface)] rounded-[3rem] border border-[var(--border)] border-dashed">
+            <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <RefreshCw className="text-accent opacity-40" size={40} />
+            </div>
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[var(--foreground)]">No Archive Matches</h3>
+            <p className="text-[var(--muted)] text-xs font-bold uppercase tracking-widest mt-2">Adjust your search filters or refresh the seasonal feed</p>
+            <button
+              onClick={() => { setSearchQuery(""); handleSync(); }}
+              className="mt-8 px-10 py-4 bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--muted)] font-black text-[10px] uppercase tracking-widest rounded-2xl hover:text-accent hover:border-accent/40 transition-all cursor-pointer shadow-md"
+            >
+              Reset Terminal
+            </button>
+          </div>
+        )}
+
+        {/* Seasonal Preview HUD */}
+        {previewAnime.length > 0 && (
+          <div className="space-y-8 pt-10 border-t border-[var(--border)]">
+            <div className="flex justify-between items-end px-2">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Scouting Report</p>
+                <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Upcoming Drops</h2>
+              </div>
+              <p className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] mb-1">Pre-season Preview active</p>
             </div>
 
-            <AnimatePresence mode="wait">
-              {activeTab === 'anime' ? (
-                <motion.div key="anime-grid" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                  {filteredAnime.map((anime) => {
-                    const isSelected = selectedAnimeIds.includes(anime.id);
-                    return (
-                      <motion.div key={anime.id} whileHover={{ y: -5 }} onClick={() => toggleSelectAnime(anime)} className={`bg-[var(--surface)] rounded-3xl border transition-all cursor-pointer shadow-lg overflow-hidden group ${isSelected ? 'border-accent ring-2 ring-accent/20' : 'border-[var(--border)] hover:border-accent/30'}`}>
-                        <div className="relative aspect-[3/4.2]">
-                          <img src={anime.cover_image} className={`w-full h-full object-cover transition-transform duration-500 ${isSelected ? 'scale-105 brightness-50' : 'group-hover:scale-110'}`} alt={anime.title_romaji} />
-                          <div className="absolute top-4 left-4 flex flex-col gap-2">
-                            <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black border border-white/20 flex items-center gap-1.5 text-white">
-                              <Zap size={10} className="text-accent" />
-                              {anime.cost_kp.toLocaleString()} KP
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-accent text-white p-3 rounded-full shadow-2xl scale-110 ring-4 ring-black">
-                                <Check size={24} strokeWidth={4} />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-5 space-y-3">
-                          <div>
-                            <h4 className={`text-[10px] font-black uppercase truncate transition-colors ${isSelected ? 'text-accent' : 'text-[var(--foreground)]'}`}>
-                              {anime.title_romaji}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{anime.format}</p>
-                              {anime.average_score && (
-                                <div className="flex items-center gap-1">
-                                  <span className="w-1 h-1 rounded-full bg-[var(--border)]"></span>
-                                  <p className="text-[8px] font-black text-accent uppercase tracking-tighter">{anime.average_score}% Score</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              ) : (
-                <motion.div key="char-grid" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-6">
-                  {filteredChars.map((char) => {
-                    const isStar = starCharId === char.id;
-                    const isWaifu = waifuId === char.id;
-                    return (
-                      <motion.div key={char.id} whileHover={{ y: -5 }} className={`bg-[var(--surface)] rounded-3xl border transition-all shadow-lg overflow-hidden group p-4 space-y-4 ${isStar ? 'border-yellow-500 ring-2 ring-yellow-500/20' : isWaifu ? 'border-pink-500 ring-2 ring-pink-500/20' : 'border-[var(--border)] hover:border-accent/30'}`}>
-                        <img src={char.image} className="w-full aspect-square object-cover rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500" alt={char.name} />
-                        <div className="text-center space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-tight truncate leading-tight text-[var(--foreground)]">{char.name}</h4>
-                          <div className="flex gap-2 justify-center">
-                            <button onClick={() => setStarCharId(isStar ? null : char.id)} className={`p-2 rounded-lg transition-all cursor-pointer ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-yellow-500'}`}><Star size={14} fill={isStar ? "black" : "none"} /></button>
-                            <button onClick={() => setWaifuId(isWaifu ? null : char.id)} className={`p-2 rounded-lg transition-all cursor-pointer ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-pink-500'}`}><Heart size={14} fill={isWaifu ? "white" : "none"} /></button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 px-2 opacity-60">
+              {previewAnime.map((anime) => (
+                <div key={anime.id} className="group relative aspect-[3/4.5] rounded-2xl overflow-hidden border border-[var(--border)] grayscale hover:grayscale-0 transition-all shadow-sm">
+                  <img src={anime.cover_image} className="w-full h-full object-cover" alt={`${anime.title_romaji} upcoming`} />
+                  <div className="absolute inset-0 bg-black/40 group-hover:opacity-0 transition-opacity" />
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <p className="text-[8px] font-black uppercase text-white truncate drop-shadow-lg">{anime.title_romaji}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

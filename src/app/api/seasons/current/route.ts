@@ -20,7 +20,23 @@ function parseDate(value?: string | null): Date | null {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function derivePhase(season: any, now: Date): {
+interface SeasonData {
+    draft_opens_at?: string | null;
+    draft_closes_at?: string | null;
+    end_date?: string | null;
+    transfer_review_ends_at?: string | null;
+    week_number?: number | null;
+    total_weeks?: number | null;
+    name?: string | null;
+}
+
+function parseDate(value?: string | null): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function derivePhase(season: SeasonData | null, now: Date): {
     phase: SeasonPhase;
     deadline: string | null;
     deadlineLabel: string | null;
@@ -35,16 +51,16 @@ function derivePhase(season: any, now: Date): {
     const reviewEnds = parseDate(season.transfer_review_ends_at);
 
     if (draftOpens && now < draftOpens) {
-        return { phase: 'pre_draft', deadline: season.draft_opens_at, deadlineLabel: 'Draft Opens' };
+        return { phase: 'pre_draft', deadline: season.draft_opens_at ?? null, deadlineLabel: 'Draft Opens' };
     }
     if (draftCloses && now < draftCloses) {
-        return { phase: 'draft_open', deadline: season.draft_closes_at, deadlineLabel: 'Draft Closes' };
+        return { phase: 'draft_open', deadline: season.draft_closes_at ?? null, deadlineLabel: 'Draft Closes' };
     }
     if (seasonEnd && now < seasonEnd) {
-        return { phase: 'season_live', deadline: season.end_date, deadlineLabel: 'Season Ends' };
+        return { phase: 'season_live', deadline: season.end_date ?? null, deadlineLabel: 'Season Ends' };
     }
     if (reviewEnds && now < reviewEnds) {
-        return { phase: 'transfer_review', deadline: season.transfer_review_ends_at, deadlineLabel: 'Transfer Review Closes' };
+        return { phase: 'transfer_review', deadline: season.transfer_review_ends_at ?? null, deadlineLabel: 'Transfer Review Closes' };
     }
 
     return { phase: 'ended', deadline: null, deadlineLabel: null };
@@ -55,19 +71,23 @@ export async function GET() {
     try {
         const now = new Date();
 
-        const { data: activeSeason } = await supabaseAdmin
+        const { data: rawActiveSeason } = await supabaseAdmin
             .from('seasons')
             .select('*')
             .eq('status', 'active')
             .single();
 
-        const { data: upcomingSeason } = await supabaseAdmin
+        const activeSeason = rawActiveSeason as SeasonData | null;
+
+        const { data: rawUpcomingSeason } = await supabaseAdmin
             .from('seasons')
             .select('*')
             .eq('status', 'upcoming')
             .order('draft_opens_at', { ascending: true })
             .limit(1)
             .maybeSingle();
+
+        const upcomingSeason = rawUpcomingSeason as SeasonData | null;
 
         if (activeSeason) {
             const { phase, deadline, deadlineLabel } = derivePhase(activeSeason, now);
@@ -105,7 +125,8 @@ export async function GET() {
             totalWeeks: 0
         });
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

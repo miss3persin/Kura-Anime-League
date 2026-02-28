@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import {
-    Zap, Trophy, Dice6, Clock, CheckCircle,
-    AlertCircle, ChevronRight, Target, Loader2, Sparkles, Info
+    Zap, Trophy, Dice6, CheckCircle,
+    AlertCircle, Target, Loader2, Sparkles, Info
 } from "lucide-react";
 
 interface Prediction {
@@ -22,71 +22,99 @@ interface Prediction {
     anime?: { title_romaji: string; cover_image: string };
 }
 
+interface User {
+    id: string;
+    email?: string;
+}
+
+interface Profile {
+    id: string;
+    total_kp: number;
+}
+
+interface Anime {
+    id: number;
+    title_romaji: string;
+    cover_image: string;
+    hype_score: number;
+}
+
+interface SeasonContextData {
+    phase: string;
+    deadline: string | null;
+    deadlineLabel: string | null;
+    activeSeason: { name?: string | null; id: string | number } | null;
+    upcomingSeason: { name?: string | null; id: string | number } | null;
+    currentWeek: number;
+    totalWeeks: number;
+}
+
 export default function PredictPage() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
-    const [profile, setProfile] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
-    const [trendingAnime, setTrendingAnime] = useState<any[]>([]);
+    const [trendingAnime, setTrendingAnime] = useState<Anime[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState<{ type: 'ok' | 'err', text: string } | null>(null);
-    const [seasonContext, setSeasonContext] = useState<any>(null);
+    const [seasonContext, setSeasonContext] = useState<SeasonContextData | null>(null);
     const [seasonLoading, setSeasonLoading] = useState(true);
 
     // New Prediction Form
     const [wagerType, setWagerType] = useState('SCORE_OVER');
     const [selectedAnimeId, setSelectedAnimeId] = useState<number | null>(null);
-    const [predictedVal, setPredictedVal] = useState('80');
+    const [predictedVal] = useState('80');
     const [amount, setAmount] = useState(500);
 
-    useEffect(() => {
-        init();
+    const loadSeasonContext = useCallback(async () => {
+        setSeasonLoading(true);
+        try {
+            const res = await fetch('/api/seasons/current');
+            if (!res.ok) throw new Error('Failed to fetch season data');
+            const data = await res.json();
+            setSeasonContext(data as SeasonContextData);
+        } catch (error: unknown) {
+            console.error('Unable to load season context:', error);
+        } finally {
+            setSeasonLoading(false);
+        }
     }, []);
 
-    const init = async () => {
+    const init = useCallback(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) { setLoading(false); return; }
-        setUser(session.user);
+        setUser(session.user as User);
 
-        const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        if (prof) setProfile(prof);
+        const { data: prof } = await supabase.from('profiles').select('id, total_kp').eq('id', session.user.id).single();
+        if (prof) setProfile(prof as Profile);
 
         const { data: preds } = await supabase
             .from('predictions')
             .select('*, anime:anime_cache(title_romaji, cover_image)')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false });
-        if (preds) setPredictions(preds);
+        if (preds) setPredictions(preds as unknown as Prediction[]);
 
         const { data: trending } = await supabase
             .from('anime_cache')
-            .select('*')
+            .select('id, title_romaji, cover_image, hype_score')
             .order('hype_score', { ascending: false })
             .limit(10);
         if (trending) {
-            setTrendingAnime(trending);
-            setSelectedAnimeId(trending[0].id);
+            const casted = trending as unknown as Anime[];
+            setTrendingAnime(casted);
+            if (casted.length > 0) setSelectedAnimeId(casted[0].id);
         }
 
         await loadSeasonContext();
 
         setLoading(false);
-    };
+    }, [loadSeasonContext]);
 
-    const loadSeasonContext = async () => {
-        setSeasonLoading(true);
-        try {
-            const res = await fetch('/api/seasons/current');
-            if (!res.ok) throw new Error('Failed to fetch season data');
-            const data = await res.json();
-            setSeasonContext(data);
-        } catch (error) {
-            console.error('Unable to load season context:', error);
-        } finally {
-            setSeasonLoading(false);
-        }
-    };
+    useEffect(() => {
+        init();
+    }, [init]);
 
     const handlePredict = async () => {
         if (!user || !profile || !selectedAnimeId) return;
@@ -209,7 +237,7 @@ export default function PredictPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {predictions.map(pred => (
                                     <motion.div key={pred.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 flex gap-4 shadow-sm hover:border-accent/30 transition-all group">
-                                        <img src={pred.anime?.cover_image} className="w-12 h-16 object-cover rounded-xl" />
+                                        <img src={pred.anime?.cover_image} className="w-12 h-16 object-cover rounded-xl" alt={pred.anime?.title_romaji || 'Anime cover'} />
                                         <div className="flex-grow space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase ${pred.is_resolved ? 'bg-[var(--surface-hover)] text-[var(--muted)]' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'}`}>

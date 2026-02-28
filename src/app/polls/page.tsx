@@ -21,12 +21,12 @@ export default function PollsPage() {
 
     useEffect(() => {
         const fetchPolls = async () => {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('polls')
                 .select('*')
                 .eq('is_active', true);
 
-            if (data) setPolls(data);
+            if (data) setPolls(data as Poll[]);
             setLoading(false);
         };
 

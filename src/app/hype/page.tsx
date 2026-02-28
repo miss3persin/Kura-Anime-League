@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
@@ -18,7 +18,7 @@ interface AnimeHype {
     cost_kp: number;
     average_score: number;
     status: string;
-    hype_history?: { timestamp: string; price: number; cost_kp?: number }[];
+    hype_history?: { timestamp: string; price: number; cost_kp?: number; hype?: number }[];
 }
 
 type TimeRangeKey = "1h" | "24h" | "7d";
@@ -34,7 +34,7 @@ type AnimeModalProps = {
     onClose: () => void;
 };
 
-const formatHistoryEntry = (entry: AnimeHype["hype_history"][number]) => {
+const formatHistoryEntry = (entry: { timestamp: string; price: number; cost_kp?: number; hype?: number }) => {
     const date = new Date(entry.timestamp);
     const isValid = !Number.isNaN(date.getTime());
     return {
@@ -44,7 +44,7 @@ const formatHistoryEntry = (entry: AnimeHype["hype_history"][number]) => {
     };
 };
 
-const computeHistoryInsights = (history: AnimeHype["hype_history"]) => {
+const computeHistoryInsights = (history?: { timestamp: string; price: number }[]) => {
     if (!history || !history.length) {
         return { high: null, low: null, avg: null, volatility: null };
     }
@@ -85,7 +85,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                 <div className="mt-6 grid gap-6 sm:grid-cols-[220px,1fr] max-h-[70vh]">
                     <div>
                         <div className="relative h-64 overflow-hidden rounded-2xl border border-white/10">
-                            <img src={anime.cover_image} alt={anime.title_romaji} className="h-full w-full object-cover" />
+                            <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="h-full w-full object-cover" />
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.4em]">
                             <span className="rounded-full border border-emerald-500/40 bg-black/40 px-3 py-1 text-emerald-300">Hype {anime.hype_score}</span>
@@ -220,7 +220,7 @@ export default function HypeIndexPage() {
     const [selectedAnime, setSelectedAnime] = useState<AnimeHype | null>(null);
     const rangeInfo = TIME_RANGES.find(range => range.key === activeRange) ?? TIME_RANGES[1];
 
-    const fetchData = async ({ skipLoading, direction }: { skipLoading?: boolean; direction?: "asc" | "desc" } = {}) => {
+    const fetchData = useCallback(async ({ skipLoading, direction }: { skipLoading?: boolean; direction?: "asc" | "desc" } = {}) => {
         if (!skipLoading) {
             setLoading(true);
         }
@@ -234,7 +234,7 @@ export default function HypeIndexPage() {
 
             if (error) throw error;
 
-            if (anime) setData(anime);
+            if (anime) setData(anime as unknown as AnimeHype[]);
         } catch (error) {
             console.error('Failed to load hype index:', error);
         } finally {
@@ -242,7 +242,7 @@ export default function HypeIndexPage() {
                 setLoading(false);
             }
         }
-    };
+    }, [sortDirection]);
 
     const refreshIndex = async () => {
         setRefreshing(true);
@@ -266,7 +266,7 @@ export default function HypeIndexPage() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     const filtered = data.filter(a =>
         a.title_romaji.toLowerCase().includes(search.toLowerCase())
@@ -394,7 +394,7 @@ export default function HypeIndexPage() {
                                             <td className="px-8 py-5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="relative w-12 h-16 flex-shrink-0">
-                                                        <img src={anime.cover_image} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
+                                                        <img src={anime.cover_image} alt={`${anime.title_romaji} cover image`} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
                                                     </div>
                                                     <div className="min-w-0">

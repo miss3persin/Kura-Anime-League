@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
@@ -58,27 +58,7 @@ export default function SquadPage() {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [weeklyScore, setWeeklyScore] = useState<number | null>(null);
 
-    useEffect(() => {
-        init();
-    }, []);
-
-    const init = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) { setLoading(false); return; }
-        setUser(session.user);
-        await fetchSquad(session.user.id);
-
-        // Fetch latest weekly score
-        const { data: ws } = await supabase
-            .from('weekly_scores')
-            .select('score, week_number')
-            .order('week_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (ws) setWeeklyScore(ws.score);
-    };
-
-    const fetchSquad = async (userId: string) => {
+    const fetchSquad = useCallback(async (userId: string) => {
         setLoading(true);
 
         const { data: season } = await supabase
@@ -96,19 +76,39 @@ export default function SquadPage() {
             .select('id, title_romaji, cover_image, cost_kp, average_score, hype_score, hype_change, genres')
             .order('hype_score', { ascending: false });
 
-        if (animeAll) setAllAnime(animeAll);
+        if (animeAll) setAllAnime(animeAll as unknown as Anime[]);
 
         if (rawTeamData) {
             const teamData = rawTeamData as unknown as SquadTeam;
             setTeam(teamData);
             const pickIds = teamData.team_picks.map(p => p.anime_id);
-            const picks = (animeAll || []).filter(a => pickIds.includes(a.id));
+            const picks = (animeAll as unknown as Anime[] || []).filter(a => pickIds.includes(a.id));
             setMyPicks(picks);
         }
         setLoading(false);
-    };
+    }, []);
 
-    const setCapData = async (field: 'captain_anime_id' | 'vice_captain_anime_id', animeId: number | null) => {
+    const init = useCallback(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) { setLoading(false); return; }
+        setUser(session.user as User);
+        await fetchSquad(session.user.id);
+
+        // Fetch latest weekly score
+        const { data: ws } = await supabase
+            .from('weekly_scores')
+            .select('score, week_number')
+            .order('week_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (ws) setWeeklyScore(ws.score);
+    }, [fetchSquad]);
+
+    useEffect(() => {
+        init();
+    }, [init]);
+
+    const setCapData = useCallback(async (field: 'captain_anime_id' | 'vice_captain_anime_id', animeId: number | null) => {
         if (!team) return;
 
         if (field === 'vice_captain_anime_id' && animeId === team.captain_anime_id) {
@@ -134,7 +134,7 @@ export default function SquadPage() {
         }
         setSaving(false);
         setTimeout(() => setMessage(null), 3000);
-    };
+    }, [team]);
 
     const handleTransfer = async (incomingAnime: Anime) => {
         if (!team || !transferOut || !user) return;
@@ -290,7 +290,7 @@ export default function SquadPage() {
                                         className={`bg-[var(--surface)] border rounded-3xl p-5 flex items-center gap-5 transition-all shadow-sm ${isTarget ? 'border-yellow-500 ring-2 ring-yellow-500/20 bg-yellow-500/5' : 'border-[var(--border)]'}`}
                                     >
                                         <div className="relative w-20 h-28 flex-shrink-0 group">
-                                            <img src={anime.cover_image} className="w-full h-full object-cover rounded-2xl shadow-xl transition-transform group-hover:scale-105" />
+                                            <img src={anime.cover_image} className="w-full h-full object-cover rounded-2xl shadow-xl transition-transform group-hover:scale-105" alt={`${anime.title_romaji} cover`} />
                                             {isCaptain && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center border-2 border-black shadow-lg"><Crown size={16} /></div>}
                                             {isVC && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-slate-400 text-black flex items-center justify-center border-2 border-black shadow-lg"><span className="text-[10px] font-black">VC</span></div>}
                                         </div>
@@ -360,7 +360,7 @@ export default function SquadPage() {
                                     return (
                                         <div key={anime.id} className="flex items-center justify-between group">
                                             <div className="flex items-center gap-3">
-                                                <img src={anime.cover_image} className="w-10 h-14 object-cover rounded-lg shadow-lg" />
+                                                <img src={anime.cover_image} className="w-10 h-14 object-cover rounded-lg shadow-lg" alt={`${anime.title_romaji} thumbnail`} />
                                                 <div>
                                                     <p className="text-[10px] font-black uppercase truncate w-32 text-[var(--foreground)]">{anime.title_romaji}</p>
                                                     <div className="flex items-center gap-2 mt-1">

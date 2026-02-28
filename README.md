@@ -67,3 +67,48 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - `fetchAiringStatuses` still consults `livechart_breaks` and prefers that data when a show is marked as on break; the refresh job keeps that table updated on every run.
 
 You can trigger the endpoint manually with the existing `SERVICE_ROUTE_SECRET` header (or hook it up to a Supabase Edge Function / GitHub Actions job once you have a scheduler). That way the app can stay responsive while the heavy sync work happens in the background.
+
+### Local dev helper
+
+- Run `SERVICE_ROUTE_SECRET=... npm run dev-refresh` to start `scripts/dev-refresh.js`. It POSTs to `/api/sync/refresh`, logs the response, and repeats the call every `DEV_REFRESH_INTERVAL_MS` (default 15 minutes). Set `DEV_REFRESH_ONCE=true` to run a single invocation or `DEV_REFRESH_BASE_URL` to target a non-local host during development.
+
+### Supabase Edge function
+
+- `supabase/functions/sync-refresh/index.ts` is a minimal Deno function that forwards requests to `/api/sync/refresh` using `SERVICE_ROUTE_SECRET`/`REFRESH_BASE_URL`. Deploy it with the Supabase CLI and set those env vars so the function can run safely in production or from `pg_cron`.
+
+### pg_cron definition
+
+- Install `pg_cron` into `pg_catalog` (Supabase enforces this schema location):
+
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+  ```
+
+- Add the `http` extension (for safe webhook calls) and a helper that posts to the refresh endpoint. Replace `YOUR_DEPLOY_URL` and `YOUR_SECRET` before running:
+
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS http;
+
+  CREATE OR REPLACE FUNCTION public.invoke_refresh_endpoint()
+  RETURNS void LANGUAGE plpgsql AS $$
+  BEGIN
+    PERFORM http_post(
+      'https://YOUR_DEPLOY_URL/api/sync/refresh',
+      json_build_object('headers', json_build_object('x-service-secret', 'YOUR_SECRET')),
+      'application/json'
+    );
+  END;
+  $$;
+  ```
+
+- Schedule the cron job every six hours (adjust the cron expression as needed):
+
+  ```sql
+  SELECT cron.schedule(
+    'anime_cache_refresh',
+    '0 */6 * * *',
+    $$CALL public.invoke_refresh_endpoint();$$
+  );
+  ```
+
+If `pg_cron` still refuses to install locally, keep using the Edge function or the dev helper until you can enable the extension in the hosted Supabase project.

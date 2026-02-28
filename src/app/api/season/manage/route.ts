@@ -21,7 +21,20 @@ function toISO(date: Date) {
   return date.toISOString();
 }
 
-async function activateSeason(season: any) {
+interface Season {
+  id: string | number;
+  name: string;
+  status: string;
+  draft_opens_at?: string;
+  draft_closes_at?: string;
+  start_date?: string;
+  end_date?: string;
+  season_number: number;
+  total_weeks?: number;
+  week_number: number;
+}
+
+async function activateSeason(season: Season) {
   return supabaseAdmin
     .from("seasons")
     .update({
@@ -32,7 +45,7 @@ async function activateSeason(season: any) {
     .eq("id", season.id);
 }
 
-async function endSeason(season: any) {
+async function endSeason(season: Season) {
   return supabaseAdmin
     .from("seasons")
     .update({
@@ -90,7 +103,7 @@ async function createUpcomingSeason(name: string, baseDate: Date, seasonNumber: 
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Season;
 }
 
 export async function POST(request: Request) {
@@ -102,19 +115,23 @@ export async function POST(request: Request) {
   const results: string[] = [];
 
   try {
-    const { data: activeSeason } = await supabaseAdmin
+    const { data: rawActiveSeason } = await supabaseAdmin
       .from("seasons")
       .select("*")
       .eq("status", "active")
       .single();
 
-    const { data: upcomingSeason } = await supabaseAdmin
+    const activeSeason = rawActiveSeason as Season | null;
+
+    const { data: rawUpcomingSeason } = await supabaseAdmin
       .from("seasons")
       .select("*")
       .eq("status", "upcoming")
       .order("draft_opens_at", { ascending: true })
       .limit(1)
       .maybeSingle();
+
+    const upcomingSeason = rawUpcomingSeason as Season | null;
 
     if (activeSeason) {
       const seasonEnd = activeSeason.end_date ? new Date(activeSeason.end_date) : null;
@@ -152,9 +169,10 @@ export async function POST(request: Request) {
       success: true,
       actions: results.length ? results : ["no changes required"]
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Season automation error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

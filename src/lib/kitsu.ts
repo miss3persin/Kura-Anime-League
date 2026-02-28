@@ -109,7 +109,17 @@ export function mapKitsuStatus(raw: string | null | undefined) {
   }
 }
 
-export function normalizeKitsuStatus(record: any, id: number) {
+interface KitsuAnimeRecord {
+  id: string;
+  attributes: {
+    averageRating: string | null;
+    popularityRank: number | null;
+    nextRelease: string | null;
+    status: string | null;
+  };
+}
+
+export function normalizeKitsuStatus(record: KitsuAnimeRecord, id: number) {
   const attributes = record?.attributes;
   if (!attributes) return null;
 
