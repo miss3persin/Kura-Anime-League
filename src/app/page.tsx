@@ -1,0 +1,578 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import type { AnnouncementContent, DisplayConfig, HeroContent } from "@/types/content";
+import { AppShell } from "@/components/ui/app-shell";
+import { NeonButton } from "@/components/ui/neon-button";
+import { TrendingUp, TrendingDown, Zap, Star, Loader2, ChevronLeft, ChevronRight, X, Swords, Trophy, Shield } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
+import { SeasonPhaseBanner } from "@/components/ui/season-banner";
+
+interface Anime {
+  id: number;
+  title_romaji: string;
+  title_english: string;
+  cover_image: string;
+  banner_image: string;
+  description: string;
+  cost_kp: number;
+  hype_change: number;
+}
+
+const DEFAULT_HERO_CONTENT: HeroContent = {
+  visible: true,
+  headline: "KAL Spring 2026",
+  subtitle: "Cour kicks off April 1, 2026 — ready for drafts",
+  cta: "Get hyped",
+  ctaLink: "/draft"
+};
+
+const DEFAULT_DISPLAY_CONFIG: DisplayConfig = {
+  showTrendingHighlights: true,
+  showMarketPulse: true,
+  showPlaybook: true,
+  showLeaderboardPreview: true,
+  showSeasonTimeline: true,
+  disableWelcomeModal: false
+};
+
+const DEFAULT_ANNOUNCEMENT: AnnouncementContent = {
+  visible: false,
+  message: "",
+  ctaLabel: "",
+  ctaLink: "",
+  tone: "default"
+};
+
+const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementContent["tone"], string> = {
+  default: "border-white/10 bg-white/5 text-white/80",
+  accent: "border-sky-500/40 bg-sky-500/10 text-sky-100",
+  warning: "border-red-500/40 bg-red-500/10 text-red-100"
+};
+
+export default function Home() {
+  const router = useRouter();
+  const [carouselAnime, setCarouselAnime] = useState<Anime[]>([]);
+  const [trendingShows, setTrendingShows] = useState<Anime[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [heroContent, setHeroContent] = useState<HeroContent>(DEFAULT_HERO_CONTENT);
+  const [displayConfig, setDisplayConfig] = useState<DisplayConfig>(DEFAULT_DISPLAY_CONFIG);
+  const [announcement, setAnnouncement] = useState<AnnouncementContent>(DEFAULT_ANNOUNCEMENT);
+
+  const showTrending = displayConfig.showTrendingHighlights ?? true;
+  const showMarketPulse = displayConfig.showMarketPulse ?? true;
+  const showPlaybook = displayConfig.showPlaybook ?? true;
+  const showLeaderboard = displayConfig.showLeaderboardPreview ?? true;
+  const showTimelineEntries = displayConfig.showSeasonTimeline ?? true;
+  const disableWelcomeModal = displayConfig.disableWelcomeModal ?? false;
+  const announcementToneClass = ANNOUNCEMENT_TONE_CLASSES[announcement.tone ?? "default"];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('anime_cache')
+          .select('*')
+          .limit(15)
+          .order('id', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          const withBanners = data.filter(a => a.banner_image).slice(0, 5);
+          setCarouselAnime(withBanners.length > 2 ? withBanners : data.slice(0, 5));
+          setTrendingShows(data.slice(5, 8));
+        }
+        setDbError(null);
+      } catch (error: any) {
+        console.error('Failed to sync anime cache:', error);
+        setDbError(error?.message ?? 'Unable to reach the database.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (disableWelcomeModal) {
+      setShowWelcomeModal(false);
+      return;
+    }
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!active || session) return;
+        if (!sessionStorage.getItem("kal_welcomed")) {
+          sessionStorage.setItem("kal_welcomed", "1");
+          timer = setTimeout(() => {
+            if (active) {
+              setShowWelcomeModal(true);
+            }
+          }, 1500);
+        }
+      } catch (error) {
+        console.error("Failed to verify session for welcome modal", error);
+      }
+    };
+    checkAuth();
+    return () => {
+      active = false;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [disableWelcomeModal]);
+
+  useEffect(() => {
+    let active = true;
+    const loadContent = async () => {
+      try {
+        const res = await fetch("/api/content");
+        const data = await res.json().catch(() => ({}));
+        if (!active) return;
+        const nextHero = { ...DEFAULT_HERO_CONTENT, ...(data?.hero ?? {}) };
+        setHeroContent(nextHero);
+        setDisplayConfig({ ...DEFAULT_DISPLAY_CONFIG, ...(data?.config ?? {}) });
+        setAnnouncement({ ...DEFAULT_ANNOUNCEMENT, ...(data?.announcement ?? {}) });
+      } catch (error) {
+        console.error("Failed to load site content", error);
+      }
+    };
+    loadContent();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Auto-slide carousel
+  useEffect(() => {
+    if (carouselAnime.length === 0) return;
+    const timer = setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % carouselAnime.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [carouselAnime.length]);
+
+  const nextSlide = () => setActiveIndex(prev => (prev + 1) % carouselAnime.length);
+  const prevSlide = () => setActiveIndex(prev => (prev - 1 + carouselAnime.length) % carouselAnime.length);
+
+  return (
+    <AppShell>
+      {/* Welcome Modal */}
+      <AnimatePresence>
+        {showWelcomeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] flex items-center justify-center p-6"
+            style={{
+              background: 'rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)'
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] p-8 max-w-md w-full shadow-2xl overflow-hidden"
+            >
+              {/* Decorative glow */}
+              <div className="absolute -top-20 -right-20 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowWelcomeModal(false)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[var(--surface-hover)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+
+              {/* Logo mark */}
+              <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-accent/25">
+                <span className="text-white font-black text-2xl">K</span>
+              </div>
+
+              <div className="space-y-2 mb-6 relative z-10">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent">Welcome to</p>
+                <h2 className="text-3xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">
+                  Kura Anime<br />League
+                </h2>
+                <p className="text-[var(--muted)] font-medium text-[11px] leading-relaxed pt-1">
+                  The fantasy sports experience built for the anime generation. Draft shows, earn points, and dominate your league.
+                </p>
+              </div>
+
+              {/* Feature pills */}
+              <div className="space-y-2 mb-6 relative z-10">
+                {[
+                  { icon: Swords, label: 'Draft seasonal anime like a fantasy pro' },
+                  { icon: Trophy, label: 'Compete in private leagues with friends' },
+                  { icon: Shield, label: 'Earn KuraPoints — your league currency' },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-[var(--surface-hover)] border border-[var(--border)] rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
+                      <f.icon size={14} className="text-accent" />
+                    </div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--foreground)] opacity-80 leading-tight">{f.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-2 relative z-10">
+                <button
+                  onClick={() => { router.push('/login'); setShowWelcomeModal(false); }}
+                  className="w-full py-3 bg-accent text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl hover:opacity-90 transition-all shadow-xl shadow-accent/20"
+                >
+                  Join the League — It&apos;s Free
+                </button>
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="w-full py-3 border border-[var(--border)] text-[var(--muted)] font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-[var(--surface-hover)] transition-all"
+                >
+                  Browse as Guest
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-12">
+        {/* Season Phase Banner */}
+        <SeasonPhaseBanner showTimelineEntries={showTimelineEntries} />
+
+        {heroContent.visible && (
+          <div className="rounded-[3rem] border border-[var(--border)] bg-gradient-to-br from-accent/10 via-black/20 to-black/60 p-8 text-center shadow-2xl space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">Hero Broadcast</p>
+            <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-white">
+              {heroContent.headline ?? DEFAULT_HERO_CONTENT.headline}
+            </h2>
+            <p className="text-[var(--muted)] text-sm leading-relaxed">
+              {heroContent.subtitle ?? DEFAULT_HERO_CONTENT.subtitle}
+            </p>
+            {heroContent.cta && (
+              <NeonButton onClick={() => router.push(heroContent.ctaLink ?? "/draft")}>
+                {heroContent.cta}
+              </NeonButton>
+            )}
+          </div>
+        )}
+
+        {announcement.visible && (
+          <div
+            className={`rounded-2xl border p-4 text-center space-y-2 ${announcementToneClass}`}
+          >
+            <p className="text-[11px] font-black uppercase tracking-[0.2em]">
+              {announcement.message || "Stay tuned for new drops"}
+            </p>
+            {announcement.ctaLabel && (
+              <NeonButton
+                variant="outline"
+                onClick={() => router.push(announcement.ctaLink ?? "/")}
+                className="mx-auto px-6 py-3 text-[10px]"
+              >
+                {announcement.ctaLabel}
+              </NeonButton>
+            )}
+          </div>
+        )}
+
+        {dbError && (
+          <div className="rounded-[2rem] border border-red-500/40 bg-red-500/5 px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-red-500">
+            Database connection issue: {dbError}
+          </div>
+        )}
+
+        {/* Carousel / Hero Section */}
+        {loading ? (
+          <div className="h-[500px] w-full bg-[var(--surface)] rounded-3xl flex items-center justify-center border border-[var(--border)]">
+            <Loader2 className="animate-spin text-accent" size={48} />
+          </div>
+        ) : carouselAnime.length > 0 ? (
+          <div className="relative h-[550px] w-full rounded-[3rem] overflow-hidden group shadow-2xl border border-[var(--border)] bg-black">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={carouselAnime[activeIndex].id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0"
+              >
+                <img
+                  src={carouselAnime[activeIndex].banner_image || carouselAnime[activeIndex].cover_image}
+                  className="w-full h-full object-cover brightness-[0.4] transition-transform duration-[10s] scale-100 group-hover:scale-105"
+                  alt="Hero Image"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-12 md:p-20 flex flex-col justify-end">
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="max-w-3xl h-[260px] flex flex-col justify-end gap-4 overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="bg-accent text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-full shadow-lg shadow-accent/20">Featured</span>
+                      <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Kura Exclusive Choice</span>
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis flex-shrink-0">
+                      {carouselAnime[activeIndex].title_romaji}
+                    </h1>
+                    <p className="text-gray-300 text-xs md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-widest font-sans flex-shrink-0">
+                      {carouselAnime[activeIndex].description?.replace(/<[^>]*>/g, '') || "Experience the most anticipated journey of the season first on KAL."}
+                    </p>
+                    <div className="flex space-x-4 flex-shrink-0">
+                      <NeonButton onClick={() => router.push('/draft')}>Draft This Series</NeonButton>
+                      <NeonButton variant="outline" accentColor="#ffffff" onClick={() => setActiveIndex((activeIndex + 1) % carouselAnime.length)}>Next Preview</NeonButton>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+
+            {/* Carousel Navigation */}
+            <div className="absolute bottom-12 right-12 flex gap-4 z-20">
+              <button
+                onClick={prevSlide}
+                className="p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+
+            {/* Slider Indicators */}
+            <div className="absolute bottom-1 w-full flex justify-center gap-2 pb-10 z-20">
+              {carouselAnime.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIndex(i)}
+                  className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${i === activeIndex ? 'w-12 bg-accent' : 'w-3 bg-white/20'}`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {showTrending && (
+          <>
+            {/* Trending Highlights */}
+            <div className="space-y-8 pt-8 px-2">
+              <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Hot Right Now</p>
+                  <h2 className="text-4xl font-black uppercase italic tracking-tighter flex items-center gap-4 font-outfit leading-none">
+                    Trending Lineup
+                  </h2>
+                </div>
+                <button
+                  onClick={() => router.push('/draft')}
+                  className="text-xs font-black text-[var(--muted)] hover:text-[var(--foreground)] transition-colors uppercase tracking-widest border border-[var(--border)] px-6 py-3 rounded-full hover:border-accent/40 bg-[var(--surface)] shadow-md cursor-pointer"
+                >
+                  View all database
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="animate-spin text-accent" size={40} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                  {trendingShows.map((show, index) => (
+                    <motion.div
+                      key={show.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      onClick={() => router.push('/draft')}
+                      className="group relative rounded-3xl overflow-hidden border border-[var(--border)] hover:border-accent/40 transition-all cursor-pointer bg-[var(--surface)] shadow-xl"
+                    >
+                      <div className="aspect-[16/10] overflow-hidden">
+                        <img
+                          src={show.banner_image || show.cover_image}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-[0.8] group-hover:brightness-100"
+                          alt={show.title_romaji}
+                        />
+                      </div>
+                      <div className="p-8 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1 max-w-[70%]">
+                            <h3 className="text-xl font-black text-[var(--foreground)] uppercase tracking-tight truncate leading-tight">{show.title_romaji}</h3>
+                            <p className="text-[var(--muted)] text-[10px] font-bold uppercase tracking-widest truncate">{show.title_english || 'Original Series'}</p>
+                          </div>
+                          <div className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black">{show.cost_kp} KP</div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {(showPlaybook || showMarketPulse) && (
+          <>
+            {/* Market Pulse & Game Guide */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {showPlaybook && (
+                <div className="lg:col-span-2 space-y-10">
+                  <div className="bg-[var(--surface)] p-10 rounded-[3rem] border border-[var(--border)] shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-12 opacity-5 -scale-x-100">
+                      <Swords size={200} />
+                    </div>
+                    <div className="relative z-10 space-y-8">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Playbook</p>
+                        <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Fresh Tactics</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Pick your roster</p>
+                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
+                            Draft five shows that match your vibe while keeping inside the 20,000 KP budget. Top-tier picks cost more, so balance hype and value.
+                            <span className="text-accent italic"> Drafts lock Friday at 12:00 UTC.</span>
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">02. Track the buzz</p>
+                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
+                            When the season drops, KP arrives from AniList scores, momentum swings, and community chatter. Leaderboards refresh every Monday so you can see where you stand.
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">03. Ride the swings</p>
+                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
+                            KP prices update daily. A sleeper snagged for 1,500 KP could spike to 4,000 KP, instantly boosting your squad value.
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">04. Bet on the week</p>
+                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
+                            Use extra KP in Prediction Markets to call weekly twists (like “Will Hero Academia stay above 8.5?”) and score bonus points when you nail it.
+                          </p>
+                        </div>
+                      </div>
+                      <NeonButton onClick={() => router.push('/draft')} className="w-full md:w-fit py-4 px-10">
+                        Initialize Draft
+                      </NeonButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {showMarketPulse && (
+                <div className="space-y-8">
+                  <div className="flex justify-between items-center px-2">
+                    <h3 className="text-xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Market Pulse</h3>
+                    <div className="p-2 bg-green-500/10 rounded-lg text-green-500 text-[8px] font-black animate-pulse">
+                      LIVE FEED
+                    </div>
+                  </div>
+                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] divide-y divide-[var(--border)] overflow-hidden shadow-xl">
+                    {carouselAnime.slice(0, 5).map((anime, i) => (
+                      <div key={i} className="p-5 flex items-center justify-between hover:bg-[var(--surface-hover)] transition-all group">
+                        <div className="flex items-center gap-4">
+                          <img src={anime.cover_image} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all" />
+                          <div>
+                            <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{anime.title_romaji}</p>
+                            <p className="text-[8px] font-black text-accent uppercase tracking-widest">Active Market</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] font-black text-[var(--foreground)] italic">{anime.cost_kp} KP</p>
+                          <p className={`text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {anime.hype_change >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                            {anime.hype_change > 0 ? '+' : ''}{anime.hype_change || 0}%
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => router.push('/hype')}
+                      className="w-full p-5 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] hover:text-accent transition-colors bg-[var(--surface-hover)]/30"
+                    >
+                      View Hype Rankings
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {showLeaderboard && (
+          <>
+            {/* Leaderboard Preview & Season Highlights */}
+            <div className="space-y-8 pt-10">
+              <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Top Performers</p>
+                  <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Elite Managers</h2>
+                </div>
+                <button onClick={() => router.push('/rankings')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">View Global Rankings</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {[
+                  { rank: 1, name: "KuroSama", kp: "450,230", avatar: "7x/avataaars/svg?seed=Kuro" },
+                  { rank: 2, name: "GojoSatoru", kp: "420,100", avatar: "7x/avataaars/svg?seed=Gojo" },
+                  { rank: 3, name: "MakimaFan", kp: "392,500", avatar: "7x/avataaars/svg?seed=Makima" },
+                  { rank: 4, name: "Tanjiro", kp: "385,000", avatar: "7x/avataaars/svg?seed=Tanjiro" },
+                ].map((usr, i) => (
+                  <div key={i} className="bg-[var(--surface-hover)] p-6 rounded-[2.5rem] border border-[var(--border)] flex items-center gap-4 group hover:border-accent/30 transition-all cursor-default">
+                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-xs">{usr.rank}</div>
+                    <img src={`https://api.dicebear.com/${usr.avatar}`} className="w-10 h-10 rounded-full border border-accent/20" />
+                    <div>
+                      <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{usr.name}</p>
+                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{usr.kp} Total KP</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Features Comparison */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-10">
+          {[
+            { id: 'hype', icon: Zap, color: 'accent', title: 'Hype Points', text: 'Earn weekly KP by drafting shows that top the global hype charts.', fill: true },
+            { id: 'badge', icon: Star, color: 'pink-500', title: 'Legendary Badges', text: 'Complete seasonal challenges to unlock rare animated profile badges.', fill: true },
+            { id: 'tier', icon: TrendingUp, color: 'yellow-500', title: 'Tier Climb', text: "Ascend from Bronze to Shogun by predicting the season's biggest sleepers." }
+          ].map((item) => (
+            <div key={item.id} className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl"
+                style={{ backgroundColor: `rgba(var(--${item.color}-rgb, ${item.color === 'accent' ? '174,0,255' : '150,150,150'}), 0.1)`, color: item.color === 'accent' ? 'var(--accent)' : item.color }}
+              >
+                <item.icon size={28} className={item.fill ? `fill-current` : ''} />
+              </div>
+              <h3 className="text-3xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)]">{item.title}</h3>
+              <p className="text-[var(--muted)] text-sm font-medium leading-relaxed uppercase tracking-wider text-[10px]">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </AppShell>
+  );
+}
