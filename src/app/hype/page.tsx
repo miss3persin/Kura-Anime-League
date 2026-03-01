@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
     TrendingUp, TrendingDown, Activity, Zap,
@@ -72,7 +72,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
             <div className="relative z-10 mx-auto w-full max-w-4xl rounded-3xl border border-white/20 bg-[var(--surface)] p-8 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col">
                 <div className="flex items-start justify-between gap-6 mb-6">
                     <div className="flex gap-6 items-center min-w-0">
-                        <div className="relative w-24 h-[100px] flex-shrink-0 overflow-hidden rounded-2xl border-2 border-black shadow-lg">
+                        <div className="relative w-24 h-[100px] shrink-0 overflow-hidden rounded-2xl border-2 border-black shadow-lg">
                             <img 
                                 src={anime.cover_image} 
                                 alt={anime.title_english || anime.title_romaji} 
@@ -94,7 +94,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex-shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] transition hover:border-accent hover:text-white hover:bg-accent/10"
+                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] transition hover:border-accent hover:text-white hover:bg-accent/10"
                     >
                         Dismiss
                     </button>
@@ -132,7 +132,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                         <div className="space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">About the Series</p>
                             <div className="text-[12px] text-[var(--muted)] leading-relaxed font-medium bg-white/[0.02] p-5 rounded-2xl border border-white/5">
-                                {(anime as any).description?.replace(/<[^>]*>/g, '') || "No synopsis available."}
+                                {(anime as { description?: string }).description?.replace(/<[^>]*>/g, '') || "No synopsis available."}
                             </div>
                         </div>
 
@@ -236,6 +236,7 @@ export default function HypeIndexPage() {
             if (error) throw error;
 
             if (anime) setData(anime as unknown as AnimeHype[]);
+
         } catch (error) {
             console.error('Failed to load hype index:', error);
         } finally {
@@ -271,7 +272,7 @@ export default function HypeIndexPage() {
     }, [fetchData]);
 
     const filtered = data.filter(a =>
-        !(a as any).is_adult && (
+        !(a as { is_adult?: boolean }).is_adult && (
             a.title_romaji.toLowerCase().includes(search.toLowerCase()) ||
             a.title_english?.toLowerCase().includes(search.toLowerCase())
         )
@@ -359,7 +360,7 @@ export default function HypeIndexPage() {
                 {/* Ticker Table */}
                 <div className="flex flex-col gap-6">
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl transition-all h-[600px] flex flex-col">
-                        <div className="overflow-x-hidden overflow-y-auto flex-grow custom-scrollbar">
+                        <div className="overflow-x-hidden overflow-y-auto grow custom-scrollbar">
                             <table className="w-full text-left border-collapse table-fixed">
                                 <thead className="sticky top-0 z-20 bg-[var(--background)] border-b border-[var(--border)]">
                                     <tr>
@@ -412,7 +413,7 @@ export default function HypeIndexPage() {
                                             </td>
                                                 <td className="px-8 py-5 min-w-0">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="relative w-10 h-14 flex-shrink-0">
+                                                        <div className="relative w-10 h-14 shrink-0">
                                                             <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
                                                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
                                                         </div>

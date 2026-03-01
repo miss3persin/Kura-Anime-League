@@ -17,7 +17,6 @@ export interface JikanAnimeResult {
 export async function fetchMalAnimeById(id: number): Promise<JikanAnimeResult | null> {
   const url = `${JIKAN_BASE_URL}/anime/${id}`;
   const maxRetries = 3;
-  let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -38,9 +37,8 @@ export async function fetchMalAnimeById(id: number): Promise<JikanAnimeResult | 
 
       if (!response.ok || !payload?.data) return null;
       return payload.data;
-    } catch (error: any) {
-      lastError = error;
-      const isNetworkError = error.message?.includes('fetch failed') || error.code === 'EAI_AGAIN';
+    } catch (error: unknown) {
+      const isNetworkError = (error as Error).message?.includes('fetch failed') || (error as { code?: string }).code === 'EAI_AGAIN';
       if (isNetworkError && attempt < maxRetries) {
         const delay = attempt * 1000;
         console.warn(`Jikan fetch attempt ${attempt} failed (DNS/Network). Retrying in ${delay}ms...`);
@@ -81,7 +79,6 @@ export async function searchMalAnime(query: string): Promise<JikanAnimeResult | 
   url.searchParams.set('limit', '1');
 
   const maxRetries = 3;
-  let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {

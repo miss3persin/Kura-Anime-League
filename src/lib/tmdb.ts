@@ -1,7 +1,4 @@
-import { logApiRateLimit } from '@/lib/apiRateLimit';
-
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
 export interface TmdbSearchResult {
   id: number;
@@ -35,7 +32,7 @@ export async function searchTmdbSeries(query: string, year?: number): Promise<Tm
     if (!data.results || data.results.length === 0) return null;
 
     // Filter for Animation (16) and ideally Japanese origin to avoid K-Dramas
-    const animeResult = data.results.find((r: any) => 
+    const animeResult = data.results.find((r: TmdbSearchResult) => 
       r.genre_ids.includes(16) && 
       (r.original_language === 'ja' || r.name.toLowerCase() === query.toLowerCase())
     );

@@ -22,7 +22,7 @@ async function kitsuFetch(path: string, options: KitsuFetchOptions) {
   }
 
   const maxRetries = 3;
-  let lastError: any = null;
+  let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -33,7 +33,7 @@ async function kitsuFetch(path: string, options: KitsuFetchOptions) {
         },
       });
 
-      const body = await response.json();
+      const body = await response.json() as { data?: any; errors?: { detail: string }[] };
       const rateLimit = parseKitsuRateLimit(response.headers);
 
       await logApiRateLimit({
@@ -56,19 +56,20 @@ async function kitsuFetch(path: string, options: KitsuFetchOptions) {
       }
 
       return body;
-    } catch (error: any) {
-      lastError = error;
-      const isNetworkError = error.message?.includes('fetch failed') || error.code === 'EAI_AGAIN';
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      lastError = err;
+      const isNetworkError = err.message?.includes('fetch failed') || (err as { code?: string }).code === 'EAI_AGAIN';
       if (isNetworkError && attempt < maxRetries) {
         const delay = attempt * 1000;
         console.warn(`Kitsu fetch attempt ${attempt} failed (DNS/Network). Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw error;
+      throw err;
     }
   }
-  throw lastError;
+  throw lastError || new Error('Unknown Kitsu fetch error');
 }
 
 function parseKitsuRateLimit(headers: Headers): KitsuRateLimitInfo {

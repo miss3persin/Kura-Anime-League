@@ -160,13 +160,13 @@ export function SeasonPhaseBanner({ showTimelineEntries = true }: SeasonPhaseBan
                         />
 
                         <div
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
                             style={{ background: `${cfg.color}15`, border: `1px solid ${cfg.color}33` }}
                         >
                             <Icon size={22} style={{ color: cfg.color }} />
                         </div>
 
-                        <div className="flex-grow min-w-0 z-10">
+                        <div className="grow min-w-0 z-10">
                             <div className="flex items-center gap-3 mb-1">
                                 <span
                                     className="text-[9px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full"
@@ -197,7 +197,7 @@ export function SeasonPhaseBanner({ showTimelineEntries = true }: SeasonPhaseBan
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3 flex-shrink-0 z-10">
+                        <div className="flex items-center gap-3 shrink-0 z-10">
                             {info.deadline && (
                                 <div className="text-right hidden sm:block">
                                     <p className="text-[8px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">
@@ -227,7 +227,7 @@ export function SeasonPhaseBanner({ showTimelineEntries = true }: SeasonPhaseBan
                             {ctaLabel && ctaHref && (
                                 <button
                                     onClick={() => router.push(ctaHref)}
-                                    className="flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:opacity-90 text-white flex-shrink-0 shadow-lg"
+                                    className="flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:opacity-90 text-white shrink-0 shadow-lg"
                                     style={{ background: cfg.color }}
                                 >
                                     {ctaLabel}

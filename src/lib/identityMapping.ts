@@ -10,7 +10,7 @@ export interface IdentityMap {
   mal_id: number | null;
   tmdb_id?: number | null;
   title?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
   updated_at: string;
 }
 
@@ -48,11 +48,17 @@ export async function upsertIdentityMapping(mapping: Partial<IdentityMap>) {
   }
 }
 
+interface OfflineMapEntry {
+  anilist_id: number;
+  kitsu_id: number | null;
+  mal_id: number | null;
+}
+
 export async function ensureIdentityMappingForAnime(anime: SeasonalAnimeEntry): Promise<IdentityMap | null> {
   const existing = await findIdentityMapping(anime.id);
   
   // 1. Local Fallback (Point 1)
-  const localMatch = (offlineMapping as any[]).find(m => m.anilist_id === anime.id);
+  const localMatch = (offlineMapping as OfflineMapEntry[]).find(m => m.anilist_id === anime.id);
   if (localMatch) {
     if (!existing || (localMatch.kitsu_id && !existing.kitsu_id) || (localMatch.mal_id && !existing.mal_id)) {
       await upsertIdentityMapping({

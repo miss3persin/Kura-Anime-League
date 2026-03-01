@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { Award, Zap, Users, Loader2, Heart, Star } from "lucide-react";
+import { Award, Zap, Users, Loader2, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 
@@ -106,7 +106,16 @@ export default function ProfilePage() {
                 .eq('user_id', currUser.id);
             
             if (userAch) {
-                setAchievements(userAch.map((ua: any) => ({
+                interface UserAchievementRow {
+                    unlocked_at: string;
+                    achievements: {
+                        id: string;
+                        name: string;
+                        description: string;
+                        icon: string;
+                    };
+                }
+                setAchievements((userAch as unknown as UserAchievementRow[]).map((ua) => ({
                     ...ua.achievements,
                     unlocked_at: ua.unlocked_at
                 })));
@@ -169,7 +178,7 @@ export default function ProfilePage() {
                                 alt="avatar"
                             />
                         </div>
-                        <div className="text-center md:text-left space-y-4 flex-grow">
+                        <div className="text-center md:text-left space-y-4 grow">
                             <div>
                                 <h2 className="text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">
                                     {profile?.username || user.user_metadata?.username || user.email?.split('@')[0]}
@@ -235,7 +244,7 @@ export default function ProfilePage() {
                                     const pick = charPicks.find(p => p.pick_type === type);
                                     return (
                                         <div key={type} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5 flex items-center gap-5 shadow-xl">
-                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] flex-shrink-0">
+                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
                                                 {pick ? (
                                                     <img src={pick.character_cache.image} className="w-full h-full object-cover" alt="char" />
                                                 ) : (

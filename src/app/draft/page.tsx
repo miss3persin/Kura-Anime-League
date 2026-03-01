@@ -4,9 +4,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { NeonButton } from "@/components/ui/neon-button";
 import {
-  Zap, CheckCircle,
+  Zap,
   Loader2, Search, RefreshCw,
-  Shield, Heart, LayoutGrid, Star, Info
+  Heart, LayoutGrid, Star, Info
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,41 +48,7 @@ interface DraftUser {
   email?: string;
 }
 
-const PHASE_ACTIONS: Record<SeasonInfoPayload["phase"], { label: string; href: string; description: string }> = {
-  draft_open: {
-    label: "Finish Your Draft",
-    href: "/draft",
-    description: "Drafting is open. Lock in five series before the deadline."
-  },
-  pre_draft: {
-    label: "Preview Upcoming Shows",
-    href: "/hype",
-    description: "The league is counting down to the opening bell. Study the upcoming lineup."
-  },
-  season_live: {
-    label: "Track the Hype Index",
-    href: "/hype",
-    description: "Matches are live. Monitor your team's momentum in real time."
-  },
-  transfer_review: {
-    label: "Manage Transfers",
-    href: "/squad",
-    description: "Transfer review is active. Decide what picks carry into the next season."
-  },
-  off_season: {
-    label: "Stay in the Loop",
-    href: "/hype",
-    description: "No draft window yet. Keep scouting until the next season announces itself."
-  },
-  ended: {
-    label: "Relive Highlights",
-    href: "/hype",
-    description: "Season complete. Review how your picks fared and prep for next season."
-  }
-};
-
 export default function DraftPage() {
-  const router = useRouter();
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [characterList, setCharacterList] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +66,6 @@ export default function DraftPage() {
   const timeline = useSeasonTimeline();
   const seasonInfo = timeline.seasonInfo;
   const [draftClosed, setDraftClosed] = useState(false);
-  const [previewAnime, setPreviewAnime] = useState<Anime[]>([]);
   
   const phaseBadgeLabel = seasonInfo?.phase
     ? seasonInfo.phase
@@ -117,7 +82,6 @@ export default function DraftPage() {
     : "TBD";
 
   const countdown = useCountdown(seasonInfo?.deadline ?? null);
-  const phaseAction = PHASE_ACTIONS[seasonInfo?.phase ?? "pre_draft"] ?? PHASE_ACTIONS.pre_draft;
   const countdownSegments = [
     { value: countdown.days, label: "d" },
     { value: countdown.hours, label: "h" },
@@ -634,10 +598,10 @@ export default function DraftPage() {
         maxWidth="max-w-3xl"
       >
         <div className="flex flex-col md:flex-row gap-10 items-start">
-          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl flex-shrink-0">
+          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl shrink-0">
             <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
           </div>
-          <div className="flex-grow space-y-6">
+          <div className="grow space-y-6">
             <div className="flex flex-wrap gap-2">
               <span className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.role}</span>
               <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.favorites.toLocaleString()} Faves</span>

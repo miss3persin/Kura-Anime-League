@@ -127,7 +127,7 @@ export async function fetchAniList<T = unknown>(
   options?: { endpoint?: string; metadata?: Record<string, unknown> }
 ): Promise<AniListFetchResult<T>> {
   const maxRetries = 3;
-  let lastError: any = null;
+  let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -144,7 +144,7 @@ export async function fetchAniList<T = unknown>(
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as { data: T; errors?: { message: string }[] };
       const duration = Date.now() - startTime;
       const rateLimit = parseRateLimitInfo(response.headers);
 
@@ -175,20 +175,21 @@ export async function fetchAniList<T = unknown>(
         throw new Error(message);
       }
 
-      return { data: data.data as T, rateLimit };
-    } catch (error: any) {
-      lastError = error;
-      const isNetworkError = error.message?.includes('fetch failed') || error.code === 'EAI_AGAIN';
+      return { data: data.data, rateLimit };
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      lastError = err;
+      const isNetworkError = err.message?.includes('fetch failed') || (err as { code?: string }).code === 'EAI_AGAIN';
       if (isNetworkError && attempt < maxRetries) {
         const delay = attempt * 1000;
         console.warn(`AniList fetch attempt ${attempt} failed (DNS/Network). Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw error;
+      throw err;
     }
   }
-  throw lastError;
+  throw lastError || new Error('Unknown AniList fetch error');
 }
 
 function parseRateLimitInfo(headers: Headers): AniListRateLimitInfo {

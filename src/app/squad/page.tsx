@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
     Crown, Zap, ArrowLeftRight, TrendingUp, TrendingDown,
-    Loader2, Star, Shield, Heart, RefreshCw, CheckCircle, AlertCircle, Info, Plus
+    Loader2, Star, Heart, RefreshCw, Info, Plus
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -287,12 +287,12 @@ export default function SquadPage() {
                                     const isTarget = transferOut?.id === anime.id;
                                     return (
                                         <div key={anime.id} className={`bg-[var(--surface)] border rounded-3xl p-5 flex items-center gap-5 transition-all shadow-sm ${isTarget ? 'border-yellow-500 bg-yellow-500/5' : 'border-[var(--border)]'}`}>
-                                            <div className="relative w-20 h-28 flex-shrink-0 group">
+                                            <div className="relative w-20 h-28 shrink-0 group">
                                                 <img src={anime.cover_image} className="w-full h-full object-cover rounded-2xl shadow-xl transition-transform group-hover:scale-105" alt="cover" />
                                                 {isCaptain && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center border-2 border-black shadow-lg"><Crown size={16} /></div>}
                                                 {isVC && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-slate-400 text-black flex items-center justify-center border-2 border-black shadow-lg"><span className="text-[10px] font-black">VC</span></div>}
                                             </div>
-                                            <div className="flex-grow min-w-0 space-y-3">
+                                            <div className="grow min-w-0 space-y-3">
                                                 <div>
                                                     <h4 className="text-sm font-black uppercase truncate text-[var(--foreground)] italic">{anime.title_english || anime.title_romaji}</h4>
                                                     <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">{anime.genres?.[0] || 'Team Pick'}</p>
@@ -324,14 +324,14 @@ export default function SquadPage() {
                                     const char = myCharacters.find(c => c.pick_type === type);
                                     return (
                                         <div key={type} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 flex items-center gap-5 shadow-sm">
-                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] flex-shrink-0">
+                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
                                                 {char ? (
                                                     <img src={char.image} className="w-full h-full object-cover" alt="char" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-[var(--muted)]/20"><Plus size={32} /></div>
                                                 )}
                                             </div>
-                                            <div className="min-w-0 flex-grow">
+                                            <div className="min-w-0 grow">
                                                 <p className="text-[8px] font-black uppercase tracking-[0.3em] text-accent mb-1">{type === 'STAR_CHAR' ? 'Star Recruit' : 'Waifu / Husbando'}</p>
                                                 {char ? (
                                                     <div className="space-y-1">

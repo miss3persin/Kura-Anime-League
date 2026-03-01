@@ -45,12 +45,12 @@ export async function runRefreshCycle(initiatedBy?: string): Promise<RefreshCycl
       throw new Error('No active or upcoming seasons found to sync.');
     }
 
-    const allSeasonalAnime: { anime: SeasonalAnimeEntry; context: any }[] = [];
+    const allSeasonalAnime: { anime: SeasonalAnimeEntry; context: Record<string, unknown> }[] = [];
 
     for (const ctx of contexts) {
       const list = await fetchSeasonalAnimeList(ctx);
       for (const item of list) {
-        allSeasonalAnime.push({ anime: item, context: ctx });
+        allSeasonalAnime.push({ anime: item, context: ctx as unknown as Record<string, unknown> });
       }
 
       steps.push({

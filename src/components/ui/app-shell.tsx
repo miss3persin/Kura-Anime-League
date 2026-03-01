@@ -201,7 +201,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                     {/* Logo */}
                     <div className="p-8 flex items-center gap-4">
                         <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:rotate-12 cursor-pointer flex-shrink-0"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform hover:rotate-12 cursor-pointer shrink-0"
                             style={{ backgroundColor: accentColor }}
                             onClick={() => router.push('/')}
                         >
@@ -221,7 +221,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-grow px-4 space-y-2 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <nav className="grow px-4 space-y-2 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                         {NAV_ITEMS.map((item) => {
                             // Filter items if they are protected and user is not logged in
                             if (item.protected && !user) return null;
@@ -244,7 +244,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                 >
                                     <Icon
                                         size={20}
-                                        className={cn("flex-shrink-0 transition-colors", isActive ? "text-accent" : "group-hover:text-[var(--foreground)]")}
+                                        className={cn("shrink-0 transition-colors", isActive ? "text-accent" : "group-hover:text-[var(--foreground)]")}
                                         style={isActive ? { color: accentColor } : {}}
                                     />
                                     {isSidebarOpen && (
@@ -274,7 +274,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                 </div>
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full flex items-center justify-center gap-2 py-4 border border-[var(--border)] text-[var(--muted)] text-xs font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all rounded-xl flex-shrink-0 overflow-hidden"
+                                    className="w-full flex items-center justify-center gap-2 py-4 border border-[var(--border)] text-[var(--muted)] text-xs font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all rounded-xl shrink-0 overflow-hidden"
                                 >
                                     {isSidebarOpen ? <><LogOut size={16} /> Sign Out</> : <LogOut size={16} />}
                                 </button>
@@ -282,7 +282,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                         ) : (
                             <button
                                 onClick={() => router.push('/login')}
-                                className="w-full flex items-center justify-center gap-2 py-4 bg-accent text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all rounded-xl shadow-lg flex-shrink-0 overflow-hidden"
+                                className="w-full flex items-center justify-center gap-2 py-4 bg-accent text-white text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all rounded-xl shadow-lg shrink-0 overflow-hidden"
                             >
                                 {isSidebarOpen ? "Log In" : "IN"}
                             </button>
@@ -293,7 +293,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
             {/* Main Area */}
             <div className={cn(
-                "flex-grow flex flex-col min-w-0 transition-all duration-500 ease-in-out",
+                "grow flex flex-col min-w-0 transition-all duration-500 ease-in-out",
                 isSidebarOpen ? "md:ml-72" : "md:ml-20"
             )}>
                 {/* Header */}
@@ -338,7 +338,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                 </header>
 
                 {/* Content */}
-                <main className="flex-grow p-6 md:p-10 max-w-7xl mx-auto w-full pb-20">
+                <main className="grow p-6 md:p-10 max-w-7xl mx-auto w-full pb-20">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}

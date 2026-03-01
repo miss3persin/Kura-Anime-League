@@ -64,7 +64,7 @@ export default function SupportPage() {
               >
                 <h3 className="text-3xl font-black uppercase mb-1 text-[var(--foreground)]">{tier.name}</h3>
                 <p className="text-4xl font-black mb-8 text-accent italic">{tier.price}</p>
-                <ul className="space-y-4 mb-10 flex-grow">
+                <ul className="space-y-4 mb-10 grow">
                   {tier.perks.map((p, j) => (
                     <li key={j} className="text-sm flex items-center gap-3 text-[var(--muted)] font-medium cursor-default">
                       <div className="w-1.5 h-1.5 rounded-full bg-accent opacity-60" /> {p}

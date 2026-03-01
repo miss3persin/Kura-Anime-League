@@ -50,7 +50,6 @@ interface SeasonContextData {
 }
 
 export default function PredictPage() {
-    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
@@ -59,16 +58,13 @@ export default function PredictPage() {
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState<{ type: 'ok' | 'err', text: string } | null>(null);
     const [seasonContext, setSeasonContext] = useState<SeasonContextData | null>(null);
-    const [seasonLoading, setSeasonLoading] = useState(true);
 
     // New Prediction Form
     const [wagerType, setWagerType] = useState('SCORE_OVER');
     const [selectedAnimeId, setSelectedAnimeId] = useState<number | null>(null);
-    const [predictedVal] = useState('80');
     const [amount, setAmount] = useState(500);
 
     const loadSeasonContext = useCallback(async () => {
-        setSeasonLoading(true);
         try {
             const res = await fetch('/api/seasons/current');
             if (!res.ok) throw new Error('Failed to fetch season data');
@@ -76,8 +72,6 @@ export default function PredictPage() {
             setSeasonContext(data as SeasonContextData);
         } catch (error: unknown) {
             console.error('Unable to load season context:', error);
-        } finally {
-            setSeasonLoading(false);
         }
     }, []);
 
@@ -239,7 +233,7 @@ export default function PredictPage() {
                                 {predictions.map(pred => (
                                     <motion.div key={pred.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 flex gap-4 shadow-sm hover:border-accent/30 transition-all group">
                                         <img src={pred.anime?.cover_image} className="w-12 h-16 object-cover rounded-xl" alt={pred.anime?.title_romaji || 'Anime cover'} />
-                                        <div className="flex-grow space-y-2">
+                                        <div className="grow space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase ${pred.is_resolved ? 'bg-[var(--surface-hover)] text-[var(--muted)]' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'}`}>
                                                     {pred.is_resolved ? 'COMPLETED' : 'PENDING'}
@@ -333,7 +327,7 @@ export default function PredictPage() {
                         </div>
 
                         <div className="p-6 bg-accent/5 rounded-[2rem] border border-accent/10 flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center text-accent flex-shrink-0"><Info size={16} /></div>
+                            <div className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0"><Info size={16} /></div>
                             <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">Predictions are settled every Friday at 12:00 UTC during the League Sync. Correct wagers pay out 2.5x - 5.0x based on odds.</p>
                         </div>
                     </div>

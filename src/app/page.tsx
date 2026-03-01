@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import type { AnnouncementContent, DisplayConfig, HeroContent } from "@/types/content";
 import { AppShell } from "@/components/ui/app-shell";
 import { NeonButton } from "@/components/ui/neon-button";
-import { TrendingUp, TrendingDown, Zap, Star, Loader2, ChevronLeft, ChevronRight, X, Swords, Trophy, Shield } from "lucide-react";
+import { TrendingUp, TrendingDown, Loader2, ChevronLeft, ChevronRight, X, Swords, Trophy, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
@@ -350,7 +350,7 @@ export default function Home() {
                   { icon: Shield, label: 'Earn KuraPoints — your league currency' },
                 ].map((f, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-[var(--surface-hover)] border border-[var(--border)] rounded-xl">
-                    <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
                       <f.icon size={14} className="text-accent" />
                     </div>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--foreground)] opacity-80 leading-tight">{f.label}</p>
@@ -451,20 +451,20 @@ export default function Home() {
                     transition={{ delay: 0.3 }}
                     className="max-w-3xl h-[260px] flex flex-col justify-end gap-4 overflow-hidden"
                   >
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className="bg-accent text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-full shadow-lg shadow-accent/20">Featured</span>
                       <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Kura Exclusive Choice</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis flex-shrink-0" title={carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis shrink-0" title={carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}>
                       {carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}
                     </h1>
-                    <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] opacity-60 leading-none truncate flex-shrink-0">
+                    <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] opacity-60 leading-none truncate shrink-0">
                       {carouselAnime[activeIndex].title_english ? carouselAnime[activeIndex].title_romaji : 'Seasonal Spotlight'}
                     </p>
-                    <p className="text-gray-300 text-xs md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-widest font-sans flex-shrink-0">
+                    <p className="text-gray-300 text-xs md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-widest font-sans shrink-0">
                       {carouselAnime[activeIndex].description?.replace(/<[^>]*>/g, '') || "Experience the most anticipated journey of the season first on KAL."}
                     </p>
-                    <div className="flex space-x-4 flex-shrink-0">
+                    <div className="flex space-x-4 shrink-0">
                       <NeonButton onClick={() => router.push('/draft')}>Draft This Series</NeonButton>
                       <NeonButton variant="outline" accentColor="#ffffff" onClick={() => setActiveIndex((activeIndex + 1) % carouselAnime.length)}>Next Preview</NeonButton>
                     </div>
@@ -626,7 +626,7 @@ export default function Home() {
                     {marketPulseAnime.slice(0, 5).map((anime, i) => (
                       <div key={i} className="p-5 flex items-center gap-4 hover:bg-[var(--surface-hover)] transition-all group">
                         <div className="flex items-center gap-4 min-w-0 flex-1">
-                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all flex-shrink-0" />
+                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0" />
                           <div className="min-w-0">
                             <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate" title={anime.title_english || anime.title_romaji}>
                               {anime.title_english || anime.title_romaji}
@@ -636,7 +636,7 @@ export default function Home() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right shrink-0">
                           <p className="text-[11px] font-black text-[var(--foreground)] italic leading-none mb-1">{anime.cost_kp} KP</p>
                           <p className={`text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {anime.hype_change >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
@@ -672,8 +672,8 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                 {topPerformers.map((usr, i) => (
                   <div key={i} className="bg-[var(--surface-hover)] px-4 py-5 rounded-[2rem] border border-[var(--border)] flex items-center gap-3 group hover:border-accent/30 transition-all cursor-default min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[10px] flex-shrink-0 border border-accent/10">{usr.rank}</div>
-                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-9 h-9 rounded-full border border-accent/20 flex-shrink-0" />
+                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[10px] shrink-0 border border-accent/10">{usr.rank}</div>
+                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-9 h-9 rounded-full border border-accent/20 shrink-0" />
                     <div className="min-w-0 flex-1 leading-tight">
                       <p className="text-[11px] font-black text-[var(--foreground)] uppercase truncate" title={usr.name}>{usr.name}</p>
                       <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{usr.kp} Total KP</p>
@@ -701,7 +701,7 @@ export default function Home() {
                 onClick={() => setSelectedCharacter(char)}
                 className="bg-[var(--surface)] border border-[var(--border)] p-8 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col items-center text-center cursor-pointer min-w-0"
               >
-                <div className="w-28 h-28 rounded-3xl overflow-hidden flex-shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
+                <div className="w-28 h-28 rounded-3xl overflow-hidden shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
                   <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                 </div>
                 <div className="space-y-3 w-full">
@@ -727,10 +727,10 @@ export default function Home() {
         maxWidth="max-w-3xl"
       >
         <div className="flex flex-col md:flex-row gap-10 items-start p-2">
-          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl flex-shrink-0 bg-[var(--surface-hover)]">
+          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl shrink-0 bg-[var(--surface-hover)]">
             <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
           </div>
-          <div className="flex-grow space-y-6">
+          <div className="grow space-y-6">
             <div className="flex flex-wrap gap-2">
               <span className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.role}</span>
               <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.favorites.toLocaleString()} Faves</span>

@@ -39,7 +39,7 @@ export const getSupabaseAdmin = (): SupabaseClient => {
 export const supabaseAdmin = new Proxy({} as SupabaseClient, {
   get(_, prop) {
     const client = getSupabaseAdmin();
-    const value = (client as any)[prop];
+    const value = (client as Record<string | symbol, unknown>)[prop];
     
     // If the property is a function (like .from, .rpc), bind it to the client
     if (typeof value === 'function') {
