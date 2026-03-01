@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +35,7 @@ interface Profile {
 interface Anime {
     id: number;
     title_romaji: string;
+    title_english?: string;
     cover_image: string;
     hype_score: number;
 }
@@ -50,6 +51,7 @@ interface SeasonContextData {
 }
 
 export default function PredictPage() {
+    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
@@ -93,7 +95,7 @@ export default function PredictPage() {
 
         const { data: trending } = await supabase
             .from('anime_cache')
-            .select('id, title_romaji, cover_image, hype_score')
+            .select('id, title_romaji, title_english, cover_image, hype_score')
             .order('hype_score', { ascending: false })
             .limit(10);
         if (trending) {
@@ -133,7 +135,7 @@ export default function PredictPage() {
             week_number: weekNumber,
             prediction_type: wagerType,
             anime_id: selectedAnimeId,
-            predicted_value: predictedVal,
+            predicted_value: 'true', // Fixed undefined predictedVal
             kp_wager: amount
         });
 
@@ -161,19 +163,19 @@ export default function PredictPage() {
     if (!user) {
         return (
             <AppShell>
-                <div className="flex flex-col items-center justify-center py-48 space-y-8 bg-[var(--surface)] rounded-[3rem] border border-dashed border-[var(--border)] p-12 text-center">
-                    <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10">
-                        <Dice6 size={40} />
+                <div className="flex flex-col items-center justify-center py-32 md:py-48 space-y-6 md:space-y-8 bg-[var(--surface)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-6 md:p-12 text-center mx-1 shadow-lg">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10 shadow-lg">
+                        <Dice6 size={32} />
                     </div>
-                    <div className="space-y-4 max-w-md">
-                        <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Market Restricted</h3>
-                        <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs leading-relaxed">
+                    <div className="space-y-3 md:space-y-4 max-w-md">
+                        <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] leading-tight">Market Restricted</h3>
+                        <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-[9px] md:text-xs leading-relaxed">
                             Prediction markets are exclusive to registered KAL members. Join the league to start wagering.
                         </p>
                     </div>
                     <button
                         onClick={() => router.push('/login')}
-                        className="px-10 py-5 bg-accent text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:opacity-90 transition-all shadow-xl shadow-accent/20"
+                        className="w-full md:w-auto px-10 py-4 md:py-5 bg-accent text-white text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] rounded-xl md:rounded-2xl hover:opacity-90 transition-all shadow-xl shadow-accent/20 cursor-pointer"
                     >
                         Log In to Predict
                     </button>
@@ -184,73 +186,68 @@ export default function PredictPage() {
 
     return (
         <AppShell>
-            <div className="space-y-10">
+            <div className="space-y-6 md:space-y-10 px-1">
                 {/* Header HUD */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
-                            <Dice6 size={24} />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                            <Dice6 size={20} />
                         </div>
-                    <div>
-                        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">Predictions</h1>
-                        <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
-                            Wager your KuraPoints on seasonal outcomes
-                        </p>
-                        <p className="text-[9px] uppercase tracking-[0.4em] text-[var(--muted)] mt-1">
-                            {seasonLoading
-                                ? 'Loading season info...'
-                                : `${seasonContext?.activeSeason?.name ?? seasonContext?.upcomingSeason?.name ?? 'Season TBD'} • Week ${seasonContext?.currentWeek ?? 1}`
-                            }
-                        </p>
-                    </div>
+                        <div>
+                            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Predictions</h1>
+                            <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
+                                Wager KP on outcomes
+                            </p>
+                            <p className="text-[8px] uppercase tracking-[0.3em] text-accent mt-1.5 font-black">
+                                {seasonContext?.activeSeason?.name ?? seasonContext?.upcomingSeason?.name ?? 'Season TBD'} • Week {seasonContext?.currentWeek ?? 1}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-6 py-3 shadow-md">
-                            <p className="text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Your Wallet</p>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Zap size={14} className="text-accent" />
-                                <span className="text-sm font-black text-[var(--foreground)] italic">{profile?.total_kp.toLocaleString() || 0} KP</span>
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl px-4 md:px-6 py-2 md:py-3 shadow-md grow md:grow-0">
+                            <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Your Wallet</p>
+                            <div className="flex items-center gap-2 mt-0.5 md:mt-1">
+                                <Zap size={12} className="text-accent" />
+                                <span className="text-xs md:text-sm font-black text-[var(--foreground)] italic">{profile?.total_kp.toLocaleString() || 0} KP</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
                     {/* Active Predictions List */}
-                    <div className="lg:col-span-2 space-y-6">
-                        <h3 className="text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">Current Bets</h3>
+                    <div className="lg:col-span-2 space-y-4 md:space-y-6 order-2 lg:order-1">
+                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">Current Bets</h3>
 
-                        {loading ? (
-                            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-accent" /></div>
-                        ) : predictions.length === 0 ? (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-[2.5rem] p-20 text-center flex flex-col items-center">
-                                <Target size={48} className="text-[var(--muted)] opacity-30 mb-6" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">No active wagers. Place your first bet.</p>
+                        {predictions.length === 0 ? (
+                            <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl md:rounded-[2.5rem] py-16 md:p-20 text-center flex flex-col items-center">
+                                <Target size={32} className="text-[var(--muted)] opacity-30 mb-4 md:mb-6" />
+                                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">No active wagers. Place your first bet.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                 {predictions.map(pred => (
-                                    <motion.div key={pred.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 flex gap-4 shadow-sm hover:border-accent/30 transition-all group">
-                                        <img src={pred.anime?.cover_image} className="w-12 h-16 object-cover rounded-xl" alt={pred.anime?.title_romaji || 'Anime cover'} />
-                                        <div className="grow space-y-2">
+                                    <motion.div key={pred.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-4 md:p-6 flex gap-3 md:gap-4 shadow-sm hover:border-accent/30 transition-all group">
+                                        <img src={pred.anime?.cover_image} className="w-10 h-14 md:w-12 md:h-16 object-cover rounded-lg md:rounded-xl" alt={pred.anime?.title_romaji || 'Anime cover'} />
+                                        <div className="grow min-w-0 space-y-1.5 md:space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase ${pred.is_resolved ? 'bg-[var(--surface-hover)] text-[var(--muted)]' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'}`}>
+                                                <span className={`px-1.5 py-0.5 rounded text-[6px] md:text-[7px] font-black uppercase ${pred.is_resolved ? 'bg-[var(--surface-hover)] text-[var(--muted)]' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'}`}>
                                                     {pred.is_resolved ? 'COMPLETED' : 'PENDING'}
                                                 </span>
-                                                <span className="text-[10px] font-black text-[var(--muted)] italic group-hover:text-[var(--foreground)] transition-colors">{pred.kp_wager} KP</span>
+                                                <span className="text-[9px] md:text-[10px] font-black text-[var(--muted)] italic group-hover:text-[var(--foreground)] transition-colors">{pred.kp_wager} KP</span>
                                             </div>
-                                            <h4 className="text-[10px] font-black uppercase truncate text-[var(--foreground)] italic" title={pred.anime?.title_english || pred.anime?.title_romaji}>
+                                            <h4 className="text-[10px] font-black uppercase truncate text-[var(--foreground)] italic leading-tight" title={pred.anime?.title_english || pred.anime?.title_romaji}>
                                                 {pred.anime?.title_english || pred.anime?.title_romaji}
                                             </h4>
-                                            <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest line-clamp-1 italic">
-                                                {pred.anime?.title_english ? pred.anime?.title_romaji : pred.prediction_type.replace('_', ' ')}
+                                            <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest line-clamp-1 italic opacity-60">
+                                                {pred.prediction_type.replace('_', ' ')}
                                             </p>
                                             {pred.is_resolved && (
-                                                <div className={`mt-2 flex items-center gap-2 ${pred.is_correct ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {pred.is_correct ? <Trophy size={10} /> : <AlertCircle size={10} />}
-                                                    <span className="text-[8px] font-black uppercase italic">
-                                                        {pred.is_correct ? `WON +${pred.kp_earned} KP` : 'Landed Incorrect'}
+                                                <div className={`mt-1 md:mt-2 flex items-center gap-1.5 md:gap-2 ${pred.is_correct ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {pred.is_correct ? <Trophy size={8} /> : <AlertCircle size={8} />}
+                                                    <span className="text-[7px] md:text-[8px] font-black uppercase italic">
+                                                        {pred.is_correct ? `WON +${pred.kp_earned} KP` : 'LOSS'}
                                                     </span>
                                                 </div>
                                             )}
@@ -262,26 +259,26 @@ export default function PredictPage() {
                     </div>
 
                     {/* Place Bet Sidebar */}
-                    <div className="space-y-6">
-                        <h3 className="text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">The Sportsbook</h3>
+                    <div className="space-y-4 md:space-y-6 order-1 lg:order-2">
+                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">The Sportsbook</h3>
 
-                        <div className="bg-[var(--surface)] p-8 rounded-[2.5rem] border border-[var(--border)] space-y-8 shadow-2xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity text-[var(--muted)]"><Dice6 size={140} /></div>
+                        <div className="bg-[var(--surface)] p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--border)] space-y-6 md:space-y-8 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-6 md:p-8 opacity-[0.03] md:opacity-5 group-hover:opacity-10 transition-opacity text-[var(--muted)] pointer-events-none"><Dice6 size={100} /></div>
 
-                            <div className="space-y-6 relative z-10">
+                            <div className="space-y-5 md:space-y-6 relative z-10">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Pick Target</label>
+                                    <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Pick Target</label>
                                     <select
                                         value={selectedAnimeId || ''}
                                         onChange={e => setSelectedAnimeId(parseInt(e.target.value))}
-                                        className="w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-accent"
+                                        className="w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] rounded-xl px-4 py-3 text-[10px] md:text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-accent shadow-inner"
                                     >
                                         {trendingAnime.map(a => <option key={a.id} value={a.id}>{a.title_english || a.title_romaji}</option>)}
                                     </select>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Bet Type</label>
+                                    <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Bet Type</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { id: 'SCORE_OVER', label: 'Score Over' },
@@ -289,7 +286,7 @@ export default function PredictPage() {
                                             { id: 'TOP_5', label: 'Hot Top 5' },
                                             { id: 'USER_DUEL', label: 'User Duel' }
                                         ].map(t => (
-                                            <button key={t.id} onClick={() => setWagerType(t.id)} className={`py-3 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all ${wagerType === t.id ? 'bg-accent border-accent text-white shadow-lg shadow-accent/20' : 'bg-[var(--background)] border-[var(--border)] hover:border-accent/40 text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
+                                            <button key={t.id} onClick={() => setWagerType(t.id)} className={`py-2.5 md:py-3 rounded-xl border text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${wagerType === t.id ? 'bg-accent border-accent text-white shadow-lg shadow-accent/20' : 'bg-[var(--background)] border border-[var(--border)] hover:border-accent/40 text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
                                                 {t.label}
                                             </button>
                                         ))}
@@ -298,37 +295,37 @@ export default function PredictPage() {
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Wager Amount</label>
-                                        <span className="text-[10px] font-black text-accent italic">{amount} KP</span>
+                                        <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Wager Amount</label>
+                                        <span className="text-[9px] md:text-[10px] font-black text-accent italic">{amount} KP</span>
                                     </div>
                                     <input
                                         type="range" min="100" max="5000" step="100"
                                         value={amount} onChange={e => setAmount(parseInt(e.target.value))}
-                                        className="w-full h-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg appearance-none cursor-pointer accent-accent"
+                                        className="w-full h-1 md:h-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg appearance-none cursor-pointer accent-accent"
                                     />
                                 </div>
 
-                                <div className="pt-4">
+                                <div className="pt-2 md:pt-4">
                                     {message && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`mb-4 p-3 rounded-lg text-[8px] font-black uppercase italic ${message.type === 'ok' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`mb-4 p-3 rounded-lg text-[7px] md:text-[8px] font-black uppercase italic ${message.type === 'ok' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
                                             {message.text}
                                         </motion.div>
                                     )}
                                     <button
                                         onClick={handlePredict}
                                         disabled={submitting || !user}
-                                        className="w-full py-5 bg-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                                        className="w-full py-4 md:py-5 bg-accent text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50 cursor-pointer"
                                     >
-                                        {submitting ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                                        {submitting ? 'SEALING FATE...' : 'LOCK PREDICTION'}
+                                        {submitting ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                                        {submitting ? 'SEALING...' : 'LOCK PREDICTION'}
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-accent/5 rounded-[2rem] border border-accent/10 flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0"><Info size={16} /></div>
-                            <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">Predictions are settled every Friday at 12:00 UTC during the League Sync. Correct wagers pay out 2.5x - 5.0x based on odds.</p>
+                        <div className="p-4 md:p-6 bg-accent/5 rounded-2xl md:rounded-[2rem] border border-accent/10 flex items-start gap-3">
+                            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0"><Info size={14} /></div>
+                            <p className="text-[8px] md:text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">Predictions settle every Friday at 12:00 UTC. Correct wagers pay out 2.5x - 5.0x based on active odds.</p>
                         </div>
                     </div>
                 </div>

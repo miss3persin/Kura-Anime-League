@@ -283,17 +283,17 @@ export default function HypeIndexPage() {
 
     return (
         <AppShell>
-            <div className="space-y-10 pb-20">
+            <div className="space-y-6 md:space-y-10 pb-20">
                 {/* Header HUD */}
-                <div className="flex flex-col gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent shadow-lg shadow-accent/10">
-                            <Activity size={24} />
+                <div className="flex flex-col gap-4 md:gap-6 px-1">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-accent/20 flex items-center justify-center text-accent shadow-lg shadow-accent/10 shrink-0">
+                            <Activity size={20} />
                         </div>
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Hype Index</h1>
-                            <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-2 opacity-60">
-                                Real-time operational intelligence • Market trending
+                            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Hype Index</h1>
+                            <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1 opacity-60">
+                                Real-time operational intelligence
                             </p>
                         </div>
                     </div>
@@ -301,67 +301,110 @@ export default function HypeIndexPage() {
                     <div className="flex flex-col gap-3 w-full md:flex-row md:items-center md:justify-between">
                         <div className="flex-1 min-w-0">
                             <div className="relative group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition-colors group-focus-within:text-accent" size={16} />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition-colors group-focus-within:text-accent" size={14} />
                                 <input
                                     value={search}
                                     onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     placeholder="Find a ticker..."
-                                    className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl pl-12 pr-6 py-4 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64 shadow-sm"
+                                    className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-xl md:rounded-2xl pl-10 pr-4 md:pl-12 md:pr-6 py-3.5 md:py-4 text-[10px] md:text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64 shadow-sm"
                                 />
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2 justify-end">
-                            {TIME_RANGES.map(range => (
-                                <button
-                                    key={range.key}
-                                    onClick={() => setActiveRange(range.key)}
-                                    className={`px-4 py-2 text-[9px] font-black uppercase tracking-[0.4em] rounded-2xl transition-all ${activeRange === range.key ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'border border-[var(--border)] text-[var(--muted)] hover:border-accent/40 hover:text-[var(--foreground)] bg-[var(--surface)]'}`}
-                                >
-                                    {range.label}
-                                </button>
-                            ))}
+                            <div className="flex p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl">
+                                {TIME_RANGES.map(range => (
+                                    <button
+                                        key={range.key}
+                                        onClick={() => setActiveRange(range.key)}
+                                        className={`px-3 md:px-4 py-1.5 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] rounded-lg md:rounded-xl transition-all ${activeRange === range.key ? 'bg-accent text-white shadow-lg' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                                    >
+                                        {range.label}
+                                    </button>
+                                ))}
+                            </div>
                             <button
                                 onClick={toggleSortDirection}
-                                className="flex items-center gap-2 px-4 py-2 text-[9px] font-black uppercase tracking-[0.4em] rounded-2xl transition-all border border-[var(--border)] text-[var(--muted)] hover:border-accent/40 hover:text-[var(--foreground)] bg-[var(--surface)]"
+                                className="flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] rounded-xl transition-all border border-[var(--border)] text-[var(--muted)] hover:border-accent/40 hover:text-[var(--foreground)] bg-[var(--surface)]"
                             >
-                                <ArrowDownUp size={14} className="text-[var(--muted)]" />
+                                <ArrowDownUp size={12} className="text-[var(--muted)]" />
                                 <span>{sortDirection === 'desc' ? 'Hype ↓' : 'Hype ↑'}</span>
                             </button>
                             <button
                                 onClick={refreshIndex}
                                 disabled={refreshing}
-                                className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] hover:border-accent/20 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                                className="p-3 md:p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] hover:border-accent/20 transition-all cursor-pointer shadow-sm disabled:opacity-50"
                             >
-                                {refreshing ? <Loader2 className="animate-spin" size={20} /> : <RefreshCw size={20} />}
+                                {refreshing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Legend / Info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 px-1">
                     {[
                         { label: 'Bullish', desc: 'Anime trending upwards in community buzz.', icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/20' },
                         { label: 'Volatile', desc: 'High hype but rapid price movement expected.', icon: Zap, color: 'text-accent', bg: 'bg-accent/10 border-accent/20' },
                         { label: 'Blue Chip', desc: 'Consistently high scores and popularity.', icon: BarChart3, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/20' },
                     ].map((item, i) => (
-                        <div key={i} className={`p-6 rounded-3xl border ${item.bg} flex items-start gap-4 shadow-xl transition-transform hover:-translate-y-1`}>
-                            <div className={`p-3 rounded-xl bg-black/20 ${item.color}`}>
-                                <item.icon size={20} />
+                        <div key={i} className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border ${item.bg} flex items-start gap-3 md:gap-4 shadow-lg transition-transform hover:-translate-y-1`}>
+                            <div className={`p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 ${item.color} shrink-0`}>
+                                <item.icon size={16} />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-xs font-black uppercase tracking-tighter text-[var(--foreground)] italic">{item.label}</p>
-                                <p className="text-[10px] font-bold text-[var(--muted)] leading-relaxed uppercase tracking-widest opacity-70">{item.desc}</p>
+                            <div className="space-y-0.5 md:space-y-1">
+                                <p className="text-[10px] md:text-xs font-black uppercase tracking-tighter text-[var(--foreground)] italic">{item.label}</p>
+                                <p className="text-[8px] md:text-[10px] font-bold text-[var(--muted)] leading-relaxed uppercase tracking-widest opacity-70">{item.desc}</p>
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Ticker Table */}
-                <div className="flex flex-col gap-6">
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl transition-all h-[600px] flex flex-col">
+                {/* Ticker Table / Cards */}
+                <div className="flex flex-col gap-4 md:gap-6 px-1">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-xl md:shadow-2xl backdrop-blur-xl transition-all md:h-[600px] flex flex-col">
                         <div className="overflow-x-hidden overflow-y-auto grow custom-scrollbar">
-                            <table className="w-full text-left border-collapse table-fixed">
+                            {/* Mobile List View */}
+                            <div className="md:hidden divide-y divide-[var(--border)]">
+                                {loading ? (
+                                    <div className="py-24 text-center">
+                                        <Loader2 className="animate-spin mx-auto text-accent mb-4" size={32} />
+                                        <p className="text-[9px] font-black uppercase text-[var(--muted)] tracking-widest">Loading Market...</p>
+                                    </div>
+                                ) : paginatedData.length === 0 ? (
+                                    <div className="py-24 text-center text-[var(--muted)] font-black uppercase text-[10px] tracking-widest italic opacity-40">No tickers found</div>
+                                ) : paginatedData.map((anime, index) => {
+                                    const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                                    const rowNumber = sortDirection === 'desc' ? globalIndex + 1 : filtered.length - globalIndex;
+                                    const currentPrice = anime.cost_kp ?? 2500;
+                                    const change = getHistoryChange(anime.hype_history, rangeInfo.ms, currentPrice);
+                                    const isPositive = change.percent >= 0;
+
+                                    return (
+                                        <div key={anime.id} className="p-4 flex items-center gap-4 active:bg-accent/5 transition-colors" onClick={() => setSelectedAnime(anime)}>
+                                            <div className="text-[9px] font-black text-[var(--muted)] w-4 text-center">{rowNumber}</div>
+                                            <div className="w-10 h-14 shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
+                                                <img src={anime.cover_image} className="w-full h-full object-cover" alt="cover" />
+                                            </div>
+                                            <div className="grow min-w-0">
+                                                <h4 className="text-[11px] font-black uppercase text-[var(--foreground)] truncate italic leading-tight">{anime.title_english || anime.title_romaji}</h4>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`text-[8px] font-black italic ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                                                        {isPositive ? '+' : ''}{change.percent}%
+                                                    </span>
+                                                    <span className="text-[8px] font-black text-accent">{anime.hype_score} PTS</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <div className="text-[11px] font-black text-[var(--foreground)]">{currentPrice.toLocaleString()}</div>
+                                                <div className="text-[7px] font-bold text-[var(--muted)] uppercase tracking-widest">KuraPoints</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Desktop Table View */}
+                            <table className="hidden md:table w-full text-left border-collapse table-fixed">
                                 <thead className="sticky top-0 z-20 bg-[var(--background)] border-b border-[var(--border)]">
                                     <tr>
                                         <th className="w-20 px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">#</th>
@@ -469,35 +512,29 @@ export default function HypeIndexPage() {
                     </div>
 
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-8 py-6 bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] shadow-xl">
-                            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
-                                Showing <span className="text-accent">{paginatedData.length}</span> of <span className="text-white">{filtered.length}</span> assets
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-8 py-4 md:py-6 bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2rem] shadow-xl">
+                            <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">
+                                Showing <span className="text-accent">{paginatedData.length}</span> / <span className="text-white">{filtered.length}</span> assets
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
-                                    className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent hover:border-accent/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                    className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                                 >
-                                    <ChevronLeft size={16} />
+                                    <ChevronLeft size={14} />
                                 </button>
                                 
-                                <div className="flex items-center gap-2">
-                                    {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                                        let pageNum = currentPage;
-                                        if (totalPages > 5) {
-                                            if (currentPage <= 3) pageNum = i + 1;
-                                            else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                                            else pageNum = currentPage - 2 + i;
-                                        } else {
-                                            pageNum = i + 1;
-                                        }
+                                <div className="flex items-center gap-1.5 md:gap-2">
+                                    {Array.from({ length: Math.min(mobileVisiblePages(totalPages, currentPage), totalPages) }).map((_, i) => {
+                                        const pageNum = getPageNumbers(totalPages, currentPage)[i];
+                                        if (pageNum === -1) return <span key={`dots-${i}`} className="text-[var(--muted)] px-1">...</span>;
 
                                         return (
                                             <button
                                                 key={pageNum}
                                                 onClick={() => setCurrentPage(pageNum)}
-                                                className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all cursor-pointer ${currentPage === pageNum ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                                                className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black transition-all cursor-pointer ${currentPage === pageNum ? 'bg-accent text-white shadow-lg' : 'border border-[var(--border)] bg-[var(--background)] text-[var(--muted)]'}`}
                                             >
                                                 {pageNum}
                                             </button>
@@ -508,9 +545,9 @@ export default function HypeIndexPage() {
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     disabled={currentPage === totalPages}
-                                    className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent hover:border-accent/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                    className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                                 >
-                                    <ChevronRight size={16} />
+                                    <ChevronRight size={14} />
                                 </button>
                             </div>
                         </div>
@@ -520,6 +557,27 @@ export default function HypeIndexPage() {
             {selectedAnime && <AnimeDetailModal anime={selectedAnime} onClose={() => setSelectedAnime(null)} />}
         </AppShell>
     );
+}
+
+function mobileVisiblePages(total: number, current: number) {
+    if (total <= 5) return total;
+    return 5;
+}
+
+function getPageNumbers(total: number, current: number) {
+    const pages = [];
+    if (total <= 5) {
+        for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+        if (current <= 3) {
+            pages.push(1, 2, 3, 4, total);
+        } else if (current >= total - 2) {
+            pages.push(1, total - 3, total - 2, total - 1, total);
+        } else {
+            pages.push(1, current - 1, current, current + 1, total);
+        }
+    }
+    return pages;
 }
 
 function ChevronLeft({ size }: { size: number }) {

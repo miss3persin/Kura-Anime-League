@@ -1,6 +1,6 @@
 export interface HypeMedia {
-  averageScore?: number;
-  average_score?: number;
+  averageScore?: number | null;
+  average_score?: number | null;
   popularity?: number;
   status?: string;
 }

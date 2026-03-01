@@ -140,115 +140,117 @@ export default function RankingsPage() {
         if (top3[0]) podiumOrder.push({ ...top3[0], pos: 1 });
         if (top3[2]) podiumOrder.push({ ...top3[2], pos: 3 });
 
-        const podiumHeights: Record<number, string> = { 1: 'h-48', 2: 'h-36', 3: 'h-28' };
+        const podiumHeights: Record<number, string> = { 1: 'h-32 md:h-48', 2: 'h-24 md:h-36', 3: 'h-20 md:h-28' };
         const posColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
 
         return (
             <>
                 {/* Podium */}
-                <div className="flex items-end justify-center gap-4 mb-14 mt-4 px-4">
+                <div className="flex items-end justify-center gap-2 md:gap-4 mb-10 md:mb-14 mt-4 px-1 md:px-4">
                     {podiumOrder.map((p) => (
                         <motion.div
                             key={p.id}
                             initial={{ opacity: 0, y: 40 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: p.pos * 0.1 }}
-                            className="flex flex-col items-center gap-3 flex-1 max-w-[180px]"
+                            className="flex flex-col items-center gap-2 md:gap-3 flex-1 max-w-[120px] md:max-w-[180px]"
                         >
                             {p.pos === 1 && (
-                                <div className="w-8 h-8 text-yellow-400 flex items-center justify-center">
-                                    <Crown size={28} />
+                                <div className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 flex items-center justify-center shrink-0">
+                                    <Crown size={20} />
                                 </div>
                             )}
                             <div
-                                className="w-16 h-16 rounded-full overflow-hidden border-4 shadow-2xl"
+                                className="w-10 h-10 md:w-16 md:h-16 rounded-full overflow-hidden border-2 md:border-4 shadow-xl shrink-0"
                                 style={{ borderColor: posColors[p.pos] }}
                             >
                                 <img
                                     src={p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.username}`}
-                                    className="w-full h-full rounded-full bg-zinc-800"
+                                    className="w-full h-full rounded-full bg-zinc-800 object-cover"
                                     alt={`${p.username} avatar`}
                                 />
                             </div>
-                            <div className="text-center">
-                                <p className="font-black uppercase text-xs truncate w-24 text-center text-[var(--foreground)]">{p.username}</p>
-                                <p className="font-black text-lg" style={{ color: posColors[p.pos] }}>
-                                    {p.kp.toLocaleString()} <span className="text-[9px] text-[var(--muted)]">KP</span>
+                            <div className="text-center min-w-0 w-full px-1">
+                                <p className="font-black uppercase text-[8px] md:text-xs truncate w-full text-center text-[var(--foreground)]">{p.username}</p>
+                                <p className="font-black text-xs md:text-lg leading-tight" style={{ color: posColors[p.pos] }}>
+                                    {p.kp.toLocaleString()} <span className="text-[7px] md:text-[9px] text-[var(--muted)] block md:inline">KP</span>
                                 </p>
                             </div>
                             {/* Platform */}
                             <div
-                                className={`w-full ${podiumHeights[p.pos]} rounded-t-2xl flex items-start justify-center pt-4`}
-                                style={{ background: `${posColors[p.pos]}18`, borderTop: `3px solid ${posColors[p.pos]}` }}
+                                className={`w-full ${podiumHeights[p.pos]} rounded-t-xl md:rounded-t-2xl flex items-start justify-center pt-2 md:pt-4`}
+                                style={{ background: `${posColors[p.pos]}18`, borderTop: `2px md:border-top-[3px] solid ${posColors[p.pos]}` }}
                             >
-                                <span className="text-3xl font-black" style={{ color: posColors[p.pos] }}>#{p.pos}</span>
+                                <span className="text-xl md:text-3xl font-black" style={{ color: posColors[p.pos] }}>#{p.pos}</span>
                             </div>
                         </motion.div>
                     ))}
                 </div>
 
                 {/* Table */}
-                <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-xl">
-                    <table className="w-full text-left">
-                        <thead className="bg-[var(--surface-hover)]">
-                            <tr>
-                                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">Rank</th>
-                                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">Player</th>
-                                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-[var(--muted)] hidden md:table-cell">Tier</th>
-                                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-[var(--muted)] text-right">KP</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--border)]">
-                            {others.length === 0 && (
+                <div className="bg-[var(--surface)] rounded-2xl md:rounded-3xl border border-[var(--border)] overflow-hidden shadow-xl mx-1">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-[var(--surface-hover)]">
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-[10px] font-black uppercase text-[var(--muted)] tracking-widest">
-                                        Awaiting more challengers...
-                                    </td>
+                                    <th className="px-4 md:px-6 py-3 md:py-4 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">Rank</th>
+                                    <th className="px-4 md:px-6 py-3 md:py-4 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">Player</th>
+                                    <th className="px-4 md:px-6 py-3 md:py-4 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-[var(--muted)] hidden sm:table-cell">Tier</th>
+                                    <th className="px-4 md:px-6 py-3 md:py-4 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-[var(--muted)] text-right">KP</th>
                                 </tr>
-                            )}
-                            {others.map((player, i) => (
-                                <motion.tr
-                                    key={player.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: i * 0.03 }}
-                                    className="hover:bg-[var(--surface-hover)] transition-colors group"
-                                >
-                                    <td className="px-6 py-5 font-black text-[var(--muted)] group-hover:text-[var(--foreground)] transition-colors text-sm">
-                                        #{i + 4}
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-[var(--surface-hover)] border border-[var(--border)] overflow-hidden shrink-0">
-                                                <img
-                                                    src={player.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`}
-                                                    alt={`${player.username} small avatar`}
-                                                />
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)]">
+                                {others.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-[10px] font-black uppercase text-[var(--muted)] tracking-widest">
+                                            Awaiting more challengers...
+                                        </td>
+                                    </tr>
+                                )}
+                                {others.map((player, i) => (
+                                    <motion.tr
+                                        key={player.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: i * 0.03 }}
+                                        className="hover:bg-[var(--surface-hover)] transition-colors group"
+                                    >
+                                        <td className="px-4 md:px-6 py-4 md:py-5 font-black text-[var(--muted)] group-hover:text-[var(--foreground)] transition-colors text-xs md:text-sm">
+                                            #{i + 4}
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 md:py-5">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-[var(--surface-hover)] border border-[var(--border)] overflow-hidden shrink-0">
+                                                    <img
+                                                        src={player.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`}
+                                                        alt={`${player.username} small avatar`}
+                                                    />
+                                                </div>
+                                                <span className="font-bold uppercase tracking-wider text-[11px] md:text-sm group-hover:text-[var(--foreground)] transition-colors truncate max-w-[100px] md:max-w-none">
+                                                    {player.username}
+                                                </span>
                                             </div>
-                                            <span className="font-bold uppercase tracking-wider text-sm group-hover:text-[var(--foreground)] transition-colors truncate">
-                                                {player.username}
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 md:py-5 hidden sm:table-cell">
+                                            <span
+                                                className="text-[7px] md:text-[9px] px-2 md:px-3 py-0.5 md:py-1 rounded-full font-black uppercase tracking-widest border"
+                                                style={{
+                                                    color: TIER_COLORS[player.badge ?? player.tier ?? 'bronze'],
+                                                    borderColor: `${TIER_COLORS[player.badge ?? player.tier ?? 'bronze']}44`,
+                                                    background: `${TIER_COLORS[player.badge ?? player.tier ?? 'bronze']}11`,
+                                                }}
+                                            >
+                                                {player.badge ?? player.tier ?? 'Bronze'}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 hidden md:table-cell">
-                                        <span
-                                            className="text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest border"
-                                            style={{
-                                                color: TIER_COLORS[player.badge ?? player.tier ?? 'bronze'],
-                                                borderColor: `${TIER_COLORS[player.badge ?? player.tier ?? 'bronze']}44`,
-                                                background: `${TIER_COLORS[player.badge ?? player.tier ?? 'bronze']}11`,
-                                            }}
-                                        >
-                                            {player.badge ?? player.tier ?? 'Bronze'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-5 text-right font-black text-base group-hover:text-accent transition-colors">
-                                        {player.kp.toLocaleString()}
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                        </td>
+                                        <td className="px-4 md:px-6 py-4 md:py-5 text-right font-black text-xs md:text-base group-hover:text-accent transition-colors">
+                                            {player.kp.toLocaleString()}
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </>
         );
@@ -256,46 +258,48 @@ export default function RankingsPage() {
 
     return (
         <AppShell>
-            <div className="space-y-10">
+            <div className="space-y-6 md:space-y-10">
                 {/* Header HUD */}
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
-                        <Trophy size={24} />
+                <div className="flex items-center gap-3 md:gap-4 px-1">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                        <Trophy size={20} />
                     </div>
                     <div>
-                        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">League Standings</h1>
-                        <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
-                            The definitive global elite hierarchy
+                        <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Standings</h1>
+                        <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
+                            The definitive global hierarchy
                         </p>
                     </div>
                 </div>
 
                 {/* Sub-Header & Controls */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex gap-2 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-fit shadow-sm">
-                        {TAB_IDS.map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                            >
-                                {tab === 'alltime' ? 'All-Time Elite' : tab === 'season' ? (currentSeason?.name || 'Seasonal') : 'Last Week'}
-                            </button>
-                        ))}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-1">
+                    <div className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
+                        <div className="flex gap-1.5 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl w-fit shadow-sm min-w-max">
+                            {TAB_IDS.map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                                >
+                                    {tab === 'alltime' ? 'All-Time' : tab === 'season' ? (currentSeason?.name || 'Seasonal') : 'Last Week'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/5 border border-accent/10">
-                            <Zap size={14} className="text-accent" />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-accent">Real-time sync active</span>
+                        <div className="flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-xl bg-accent/5 border border-accent/10">
+                            <Zap size={12} className="text-accent shrink-0" />
+                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-accent">Sync active</span>
                         </div>
                     </div>
                 </div>
 
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center py-40 space-y-4">
-                        <Loader2 className="animate-spin text-accent" size={48} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Recalculating Ranks...</p>
+                    <div className="flex flex-col items-center justify-center py-32 md:py-40 space-y-4">
+                        <Loader2 className="animate-spin text-accent" size={40} />
+                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Recalculating...</p>
                     </div>
                 ) : (
                     <AnimatePresence mode="wait">
@@ -309,9 +313,9 @@ export default function RankingsPage() {
                             {activeTab === 'alltime' && renderPodiumAndTable(alltimeData)}
                             {activeTab === 'season' && (
                                 seasonScores.length === 0 ? (
-                                    <div className="py-40 text-center bg-[var(--surface-hover)] rounded-[3rem] border border-dashed border-[var(--border)]">
-                                        <Star size={48} className="mx-auto text-[var(--border)] mb-4" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Seasonal Data Synchronizing...</p>
+                                    <div className="py-32 md:py-40 text-center bg-[var(--surface-hover)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-8">
+                                        <Star size={32} className="mx-auto text-[var(--border)] mb-4" />
+                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Seasonal Data Synchronizing...</p>
                                     </div>
                                 ) : (
                                     renderPodiumAndTable(seasonData as PlayerRow[])
@@ -319,9 +323,9 @@ export default function RankingsPage() {
                             )}
                             {activeTab === 'weekly' && (
                                 weeklyScores.length === 0 ? (
-                                    <div className="py-40 text-center bg-[var(--surface-hover)] rounded-[3rem] border border-dashed border-[var(--border)]">
-                                        <TrendingUp size={48} className="mx-auto text-[var(--border)] mb-4" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Awaiting Next Week&apos;s Results...</p>
+                                    <div className="py-32 md:py-40 text-center bg-[var(--surface-hover)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-8">
+                                        <TrendingUp size={32} className="mx-auto text-[var(--border)] mb-4" />
+                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Awaiting Results...</p>
                                     </div>
                                 ) : (
                                     renderPodiumAndTable(weeklyData as PlayerRow[])

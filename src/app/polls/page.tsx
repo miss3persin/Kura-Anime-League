@@ -72,18 +72,18 @@ export default function PollsPage() {
 
     return (
         <AppShell>
-            <div className="space-y-12">
-                <div className="text-center space-y-3">
-                    <h2 className="text-5xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Community Polls</h2>
-                    <p className="text-[var(--muted)] text-sm font-bold uppercase tracking-[0.3em]">Your vote decides the seasonal winner</p>
+            <div className="space-y-8 md:space-y-12 pb-20">
+                <div className="text-center space-y-2 md:space-y-3 px-4">
+                    <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] leading-tight">Community Polls</h2>
+                    <p className="text-[var(--muted)] text-[9px] md:text-sm font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">Your vote decides the seasonal winner</p>
                 </div>
 
                 {polls.length === 0 ? (
-                    <div className="text-center py-20 bg-[var(--surface)] rounded-3xl border border-[var(--border)] border-dashed">
-                        <p className="text-[var(--muted)] font-black uppercase tracking-widest text-xs">No active polls at the moment. Check back soon!</p>
+                    <div className="text-center py-16 md:py-20 bg-[var(--surface)] rounded-2xl md:rounded-3xl border border-[var(--border)] border-dashed mx-1">
+                        <p className="text-[var(--muted)] font-black uppercase tracking-widest text-[10px] md:text-xs">No active polls at the moment. Check back soon!</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 px-1">
                         {polls.map((poll, index) => {
                             const total = poll.votes_a + poll.votes_b;
                             const pct_a = total === 0 ? 50 : Math.round((poll.votes_a / total) * 100);
@@ -94,28 +94,28 @@ export default function PollsPage() {
                                     key={poll.id}
                                     initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-3xl space-y-8 relative overflow-hidden shadow-2xl"
+                                    className="bg-[var(--surface)] border border-[var(--border)] p-6 md:p-10 rounded-2xl md:rounded-3xl space-y-6 md:space-y-8 relative overflow-hidden shadow-2xl"
                                 >
-                                    <div className="absolute top-0 right-0 p-8 opacity-5 text-[var(--muted)]">
-                                        <VoteIcon size={80} />
+                                    <div className="absolute top-0 right-0 p-6 md:p-8 opacity-[0.03] md:opacity-5 text-[var(--muted)] pointer-events-none">
+                                        <VoteIcon size={64} />
                                     </div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tight italic leading-snug relative z-10 text-[var(--foreground)]">{poll.question}</h3>
-                                    <div className="space-y-4 relative z-10">
+                                    <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight italic leading-snug relative z-10 text-[var(--foreground)] min-h-[3rem] md:min-h-0">{poll.question}</h3>
+                                    <div className="space-y-3 md:space-y-4 relative z-10">
                                         {/* Option A */}
                                         <button
                                             onClick={() => handleVote(poll.id, 'a')}
-                                            className="w-full text-left p-6 bg-[var(--background)] border border-[var(--border)] rounded-2xl hover:border-accent/40 group transition-all relative overflow-hidden"
+                                            className="w-full text-left p-4 md:p-6 bg-[var(--background)] border border-[var(--border)] rounded-xl md:rounded-2xl hover:border-accent/40 group transition-all relative overflow-hidden"
                                         >
-                                            <div className="relative z-10 flex justify-between items-center mb-2">
-                                                <span className="text-sm font-bold uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors text-[var(--muted)]">{poll.option_a}</span>
-                                                <span className="text-xs font-black text-[var(--foreground)]">{pct_a}%</span>
+                                            <div className="relative z-10 flex justify-between items-center mb-1.5 md:mb-2">
+                                                <span className="text-xs md:text-sm font-bold uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors text-[var(--muted)]">{poll.option_a}</span>
+                                                <span className="text-[11px] md:text-xs font-black text-[var(--foreground)]">{pct_a}%</span>
                                             </div>
-                                            <div className="w-full h-2.5 bg-[var(--surface-hover)] rounded-full overflow-hidden">
+                                            <div className="w-full h-2 md:h-2.5 bg-[var(--surface-hover)] rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${pct_a}%` }}
                                                     transition={{ duration: 1 }}
-                                                    className="h-full bg-accent shadow-[0_0_15px_var(--accent)] rounded-full"
+                                                    className="h-full bg-accent shadow-[0_0_10px_var(--accent)] rounded-full"
                                                 ></motion.div>
                                             </div>
                                         </button>
@@ -123,13 +123,13 @@ export default function PollsPage() {
                                         {/* Option B */}
                                         <button
                                             onClick={() => handleVote(poll.id, 'b')}
-                                            className="w-full text-left p-6 bg-[var(--background)] border border-[var(--border)] rounded-2xl hover:border-accent/40 group transition-all relative overflow-hidden"
+                                            className="w-full text-left p-4 md:p-6 bg-[var(--background)] border border-[var(--border)] rounded-xl md:rounded-2xl hover:border-accent/40 group transition-all relative overflow-hidden"
                                         >
-                                            <div className="relative z-10 flex justify-between items-center mb-2">
-                                                <span className="text-sm font-bold uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors text-[var(--muted)]">{poll.option_b}</span>
-                                                <span className="text-xs font-black text-[var(--foreground)]">{pct_b}%</span>
+                                            <div className="relative z-10 flex justify-between items-center mb-1.5 md:mb-2">
+                                                <span className="text-xs md:text-sm font-bold uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors text-[var(--muted)]">{poll.option_b}</span>
+                                                <span className="text-[11px] md:text-xs font-black text-[var(--foreground)]">{pct_b}%</span>
                                             </div>
-                                            <div className="w-full h-2.5 bg-[var(--surface-hover)] rounded-full overflow-hidden">
+                                            <div className="w-full h-2 md:h-2.5 bg-[var(--surface-hover)] rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${pct_b}%` }}
@@ -139,7 +139,7 @@ export default function PollsPage() {
                                             </div>
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-[var(--muted)] font-black uppercase tracking-widest text-center relative z-10">
+                                    <p className="text-[9px] md:text-[10px] text-[var(--muted)] font-black uppercase tracking-widest text-center relative z-10">
                                         {total.toLocaleString()} FANS HAVE VOTED
                                     </p>
                                 </motion.div>

@@ -93,100 +93,100 @@ export default function SettingsPage() {
 
     return (
         <AppShell>
-            <div className="max-w-4xl mx-auto space-y-10">
-                <div className="flex items-center justify-between border-b border-[var(--border)] pb-8">
-                    <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">League Settings</h2>
-                    <div className="px-5 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-full text-[var(--foreground)] text-[10px] font-black uppercase tracking-widest shadow-sm">
+            <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 px-1">
+                <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border)] pb-6 md:pb-8 gap-4">
+                    <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Settings</h2>
+                    <div className="px-4 md:px-5 py-1.5 md:py-2 bg-[var(--surface)] border border-[var(--border)] rounded-full text-[var(--foreground)] text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-sm w-fit">
                         KAL Stable v2.4.0
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="space-y-6">
-                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Profile Identity</h3>
-                            <form onSubmit={handleUpdateProfile} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 space-y-6 shadow-xl">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
+                    <div className="lg:col-span-2 space-y-6 md:space-y-8">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Profile Identity</h3>
+                            <form onSubmit={handleUpdateProfile} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-5 md:space-y-6 shadow-xl">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest ml-1">Display Username</label>
+                                    <label className="text-[10px] md:text-xs font-bold text-[var(--muted)] uppercase tracking-widest ml-1">Display Username</label>
                                     <div className="relative">
-                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={14} />
                                         <input
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
-                                            className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl pl-12 pr-4 py-4 text-sm text-[var(--foreground)] focus:border-accent transition-all cursor-pointer shadow-inner"
+                                            className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl pl-10 md:pl-12 pr-4 py-3.5 md:py-4 text-xs md:text-sm text-[var(--foreground)] focus:border-accent transition-all cursor-pointer shadow-inner"
                                             placeholder="Enter username"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest ml-1">Avatar URL</label>
+                                    <label className="text-[10px] md:text-xs font-bold text-[var(--muted)] uppercase tracking-widest ml-1">Avatar URL</label>
                                     <input
                                         type="text"
                                         value={avatarUrl}
                                         onChange={(e) => setAvatarUrl(e.target.value)}
-                                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 text-sm text-[var(--foreground)] focus:border-accent transition-all cursor-pointer shadow-inner"
+                                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3.5 md:p-4 text-xs md:text-sm text-[var(--foreground)] focus:border-accent transition-all cursor-pointer shadow-inner"
                                         placeholder="https://..."
                                     />
-                                    <p className="text-[10px] text-[var(--muted)] uppercase font-black tracking-tighter px-1 opacity-60">Use a direct image link for your league profile picture</p>
+                                    <p className="text-[8px] md:text-[10px] text-[var(--muted)] uppercase font-black tracking-tighter px-1 opacity-60">Use a direct image link for your profile picture</p>
                                 </div>
 
-                                <div className="pt-4">
+                                <div className="pt-2 md:pt-4">
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className="w-full py-4 bg-accent text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-3 shadow-lg shadow-accent/20 cursor-pointer disabled:opacity-50"
+                                        className="w-full py-3.5 md:py-4 bg-accent text-white font-black uppercase tracking-[0.2em] rounded-xl md:rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 md:gap-3 shadow-lg shadow-accent/20 cursor-pointer disabled:opacity-50 text-[10px] md:text-xs"
                                     >
-                                        {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} /> Sync Account</>}
+                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Sync Account</>}
                                     </button>
                                 </div>
                             </form>
                         </div>
 
-                        <div className="space-y-6">
-                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Preferences</h3>
-                            <div className="bg-[var(--surface-hover)] border border-[var(--border)] rounded-3xl p-8 space-y-8 opacity-50 select-none shadow-sm">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Preferences</h3>
+                            <div className="bg-[var(--surface-hover)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-6 md:space-y-8 opacity-50 select-none shadow-sm">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-[var(--background)] rounded-xl border border-[var(--border)] text-[var(--muted)]">
-                                            <Bell size={20} />
+                                    <div className="flex items-center gap-3 md:gap-4">
+                                        <div className="p-2.5 md:p-3 bg-[var(--background)] rounded-lg md:rounded-xl border border-[var(--border)] text-[var(--muted)]">
+                                            <Bell size={18} />
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-bold text-[var(--foreground)]">Draft Reminders</h4>
-                                            <p className="text-xs text-[var(--muted)] uppercase font-black tracking-tighter">Coming soon in Phase 3</p>
+                                            <h4 className="text-base md:text-lg font-bold text-[var(--foreground)]">Draft Reminders</h4>
+                                            <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-tighter">Phase 3 Intelligence</p>
                                         </div>
                                     </div>
-                                    <div className="w-14 h-8 bg-[var(--border)] rounded-full relative">
-                                        <div className="absolute left-1 top-1 w-6 h-6 bg-[var(--muted)] rounded-full shadow-sm"></div>
+                                    <div className="w-10 md:w-14 h-6 md:h-8 bg-[var(--border)] rounded-full relative">
+                                        <div className="absolute left-1 top-1 w-4 h-4 md:w-6 md:h-6 bg-[var(--muted)] rounded-full shadow-sm"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="space-y-6">
-                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Account Actions</h3>
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 space-y-4 shadow-xl">
+                    <div className="space-y-6 md:space-y-8">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Account Actions</h3>
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-3 md:space-y-4 shadow-xl">
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full py-5 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm"
+                                    className="w-full py-4 md:py-5 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px] rounded-xl md:rounded-2xl hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all flex items-center justify-center gap-2 md:gap-3 cursor-pointer shadow-sm"
                                 >
-                                    <LogOut size={16} /> Logout Official
+                                    <LogOut size={14} /> Logout Official
                                 </button>
-                                <button className="w-full py-5 border border-red-500/10 text-red-500/40 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl cursor-not-allowed">
-                                    Decommission Account
+                                <button className="w-full py-4 md:py-5 border border-red-500/10 text-red-500/40 font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px] rounded-xl md:rounded-2xl cursor-not-allowed">
+                                    Decommission
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-8 bg-accent/5 border border-accent/10 rounded-3xl space-y-4 shadow-sm">
-                            <div className="p-3 w-fit bg-accent/10 rounded-xl text-accent">
-                                <Shield size={24} />
+                        <div className="p-6 md:p-8 bg-accent/5 border border-accent/10 rounded-2xl md:rounded-3xl space-y-3 md:space-y-4 shadow-sm">
+                            <div className="p-2.5 md:p-3 w-fit bg-accent/10 rounded-lg md:rounded-xl text-accent">
+                                <Shield size={20} />
                             </div>
-                            <h4 className="text-lg font-black uppercase tracking-tighter italic text-[var(--foreground)]">Player Protection</h4>
-                            <p className="text-xs text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider">Your league data is secured via end-to-end Supabase encryption. We never share your draft picks with external third parties.</p>
+                            <h4 className="text-base md:text-lg font-black uppercase tracking-tighter italic text-[var(--foreground)]">Player Protection</h4>
+                            <p className="text-[10px] md:text-xs text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider">Your league data is secured via end-to-end Supabase encryption. We never share draft picks.</p>
                         </div>
                     </div>
                 </div>

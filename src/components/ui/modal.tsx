@@ -5,10 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from "@/lib/utils";
 
 interface ModalProps {
     isOpen: boolean;
@@ -35,24 +32,24 @@ export const Modal = ({ isOpen, onClose, title, children, showClose = true, maxW
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className={cn("relative bg-[var(--surface)] border border-[var(--border)] w-full rounded-[2.5rem] p-10 shadow-2xl overflow-hidden", maxWidth)}
+                        className={cn("relative bg-[var(--surface)] border border-[var(--border)] w-full rounded-2xl md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar", maxWidth)}
                     >
-                        <div className="absolute top-0 right-0 p-8">
+                        <div className="absolute top-0 right-0 p-4 md:p-8">
                             {showClose && (
                                 <button
                                     onClick={onClose}
-                                    className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                                    className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer p-1"
                                 >
-                                    <X size={24} />
+                                    <X size={20} />
                                 </button>
                             )}
                         </div>
 
-                        <div className="space-y-6">
-                            <h3 className="text-3xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] pr-8 md:pr-0">
                                 {title}
                             </h3>
-                            <div className="text-[var(--muted)] font-medium leading-relaxed">
+                            <div className="text-[var(--muted)] font-medium leading-relaxed text-sm md:text-base">
                                 {children}
                             </div>
                         </div>

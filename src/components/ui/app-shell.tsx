@@ -13,10 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from "@/lib/supabase/client";
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from "@/lib/utils";
 
 type NavItem = {
     id: string;
@@ -194,7 +191,8 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             <aside
                 className={cn(
                     "fixed inset-y-0 left-0 z-50 bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-500 ease-in-out shadow-xl",
-                    isSidebarOpen ? "w-72 translate-x-0" : "w-0 -translate-x-full md:w-20 md:translate-x-0"
+                    isSidebarOpen ? "w-72 translate-x-0" : "w-0 -translate-x-full md:w-20 md:translate-x-0",
+                    "hidden md:block" // Desktop only sidebar
                 )}
             >
                 <div className="flex flex-col h-full overflow-hidden">
@@ -294,28 +292,30 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             {/* Main Area */}
             <div className={cn(
                 "grow flex flex-col min-w-0 transition-all duration-500 ease-in-out",
-                isSidebarOpen ? "md:ml-72" : "md:ml-20"
+                isSidebarOpen ? "md:ml-72" : "md:ml-20",
+                "ml-0" // Reset margin for mobile
             )}>
                 {/* Header */}
-                <header className="h-20 border-b border-[var(--border)] flex items-center justify-between px-6 md:px-10 bg-[var(--background)]/80 backdrop-blur-xl sticky top-0 z-30">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-2 hover:bg-[var(--surface-hover)] rounded-lg md:hidden"
+                <header className="h-16 md:h-20 border-b border-[var(--border)] flex items-center justify-between px-4 md:px-10 bg-[var(--background)]/80 backdrop-blur-xl sticky top-0 z-30">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg md:hidden shrink-0"
+                            style={{ backgroundColor: accentColor }}
+                            onClick={() => router.push('/')}
                         >
-                            <Menu size={20} />
-                        </button>
-                        <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[var(--muted)] truncate">
-                            Welcome to the League • <span className="text-[var(--foreground)]">{seasonInfo?.activeSeason?.name || seasonInfo?.upcomingSeason?.name || 'OFF-SEASON'}</span>
+                            <span className="text-black font-black text-lg">K</span>
+                        </div>
+                        <div className="text-[9px] md:text-xs font-bold uppercase tracking-widest text-[var(--muted)] truncate max-w-[150px] sm:max-w-none">
+                            <span className="hidden sm:inline">Welcome to the League • </span><span className="text-[var(--foreground)]">{seasonInfo?.activeSeason?.name || seasonInfo?.upcomingSeason?.name || 'OFF-SEASON'}</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 md:gap-6">
+                    <div className="flex items-center gap-2 md:gap-6">
                         {profile && (
-                            <div className="hidden sm:flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-2 rounded-full">
-                                <Zap size={14} className="text-accent fill-accent" />
-                                <span className="text-[10px] font-black uppercase tracking-tighter text-accent">
-                                    {profile.total_kp?.toLocaleString()} KP
+                            <div className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-3 md:px-4 py-1.5 md:py-2 rounded-full">
+                                <Zap size={12} className="text-accent fill-accent md:w-3.5 md:h-3.5" />
+                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter text-accent">
+                                    {profile.total_kp?.toLocaleString()} <span className="hidden xs:inline">KP</span>
                                 </span>
                             </div>
                         )}
@@ -325,20 +325,15 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                         >
                             {mounted && (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />)}
                         </button>
-                        <button className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors relative p-2">
+                        <button className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors relative p-2 hidden xs:block">
                             <Bell size={20} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[var(--background)]"></span>
                         </button>
-                        <div className="hidden sm:block w-px h-6 bg-[var(--border)]"></div>
-                        <div className="flex items-center gap-3 cursor-pointer group">
-                            <span className="hidden sm:inline text-xs font-bold text-[var(--muted)] group-hover:text-[var(--foreground)] transition-colors">Global Pool</span>
-                            <Users size={20} className="text-[var(--muted)] group-hover:text-[var(--foreground)] transition-colors" />
-                        </div>
                     </div>
                 </header>
 
                 {/* Content */}
-                <main className="grow p-6 md:p-10 max-w-7xl mx-auto w-full pb-20">
+                <main className="grow p-4 md:p-10 max-w-7xl mx-auto w-full pb-24 md:pb-20">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}
@@ -352,8 +347,35 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                     </AnimatePresence>
                 </main>
 
+                {/* Mobile Bottom Navigation */}
+                <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] px-6 py-3 pb-6 flex items-center justify-between">
+                    {[
+                        { icon: Home, label: 'Home', href: '/' },
+                        { icon: Shield, label: 'Squad', href: '/squad' },
+                        { icon: LayoutGrid, label: 'Draft', href: '/draft' },
+                        { icon: Activity, label: 'Hype', href: '/hype' },
+                        { icon: User, label: 'Profile', href: '/profile' },
+                    ].map((item) => {
+                        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                        const Icon = item.icon;
+                        return (
+                            <button
+                                key={item.label}
+                                onClick={() => router.push(item.href)}
+                                className={cn(
+                                    "flex flex-col items-center gap-1 transition-all",
+                                    isActive ? "text-accent" : "text-[var(--muted)]"
+                                )}
+                            >
+                                <Icon size={20} style={isActive ? { color: accentColor } : {}} />
+                                <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+
                 {/* Mini Footer */}
-                <footer className="h-12 bg-black border-t border-white/5 flex items-center justify-between px-6 md:px-10 shrink-0">
+                <footer className="h-12 bg-black border-t border-white/5 flex items-center justify-between px-6 md:px-10 shrink-0 hidden md:flex">
                     <div className="flex gap-4 md:gap-8">
                         <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">© 2026 KAL</span>
                         <span className="hidden sm:inline text-[9px] font-bold text-gray-600 uppercase tracking-widest">PHASE 2 ONGOING</span>

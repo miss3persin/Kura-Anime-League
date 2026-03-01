@@ -377,21 +377,21 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-12">
+      <div className="space-y-8 md:space-y-12">
         {/* Season Phase Banner */}
         <SeasonPhaseBanner showTimelineEntries={showTimelineEntries} />
 
         {heroContent.visible && (
-          <div className="rounded-[3rem] border border-[var(--border)] bg-gradient-to-br from-accent/10 via-black/20 to-black/60 p-8 text-center shadow-2xl space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">Hero Broadcast</p>
-            <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-white">
+          <div className="rounded-2xl md:rounded-[3rem] border border-[var(--border)] bg-gradient-to-br from-accent/10 via-black/20 to-black/60 p-6 md:p-8 text-center shadow-2xl space-y-3">
+            <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[var(--muted)]">Hero Broadcast</p>
+            <h2 className="text-xl md:text-3xl font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-white">
               {heroContent.headline ?? DEFAULT_HERO_CONTENT.headline}
             </h2>
-            <p className="text-[var(--muted)] text-sm leading-relaxed">
+            <p className="text-[var(--muted)] text-xs md:text-sm leading-relaxed">
               {heroContent.subtitle ?? DEFAULT_HERO_CONTENT.subtitle}
             </p>
             {heroContent.cta && (
-              <NeonButton onClick={() => router.push(heroContent.ctaLink ?? "/draft")}>
+              <NeonButton onClick={() => router.push(heroContent.ctaLink ?? "/draft")} className="px-6 py-3 text-[10px]">
                 {heroContent.cta}
               </NeonButton>
             )}
@@ -400,16 +400,16 @@ export default function Home() {
 
         {announcement.visible && (
           <div
-            className={`rounded-2xl border p-4 text-center space-y-2 ${announcementToneClass}`}
+            className={`rounded-xl md:rounded-2xl border p-4 text-center space-y-2 ${announcementToneClass}`}
           >
-            <p className="text-[11px] font-black uppercase tracking-[0.2em]">
+            <p className="text-[9px] md:text-[11px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em]">
               {announcement.message || "Stay tuned for new drops"}
             </p>
             {announcement.ctaLabel && (
               <NeonButton
                 variant="outline"
                 onClick={() => router.push(announcement.ctaLink ?? "/")}
-                className="mx-auto px-6 py-3 text-[10px]"
+                className="mx-auto px-4 md:px-6 py-2 md:py-3 text-[9px] md:text-[10px]"
               >
                 {announcement.ctaLabel}
               </NeonButton>
@@ -418,18 +418,18 @@ export default function Home() {
         )}
 
         {dbError && (
-          <div className="rounded-[2rem] border border-red-500/40 bg-red-500/5 px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-red-500">
+          <div className="rounded-xl md:rounded-[2rem] border border-red-500/40 bg-red-500/5 px-4 md:px-6 py-3 md:py-4 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-red-500">
             Database connection issue: {dbError}
           </div>
         )}
 
         {/* Carousel / Hero Section */}
         {loading ? (
-          <div className="h-[500px] w-full bg-[var(--surface)] rounded-3xl flex items-center justify-center border border-[var(--border)]">
-            <Loader2 className="animate-spin text-accent" size={48} />
+          <div className="h-[300px] md:h-[500px] w-full bg-[var(--surface)] rounded-2xl md:rounded-3xl flex items-center justify-center border border-[var(--border)]">
+            <Loader2 className="animate-spin text-accent" size={40} />
           </div>
         ) : carouselAnime.length > 0 ? (
-          <div className="relative h-[550px] w-full rounded-[3rem] overflow-hidden group shadow-2xl border border-[var(--border)] bg-black">
+          <div className="relative h-[450px] md:h-[550px] w-full rounded-2xl md:rounded-[3rem] overflow-hidden group shadow-2xl border border-[var(--border)] bg-black">
             <AnimatePresence mode="wait">
               <motion.div
                 key={carouselAnime[activeIndex].id}
@@ -444,29 +444,29 @@ export default function Home() {
                   className="w-full h-full object-cover brightness-[0.4] transition-transform duration-[10s] scale-100 group-hover:scale-105"
                   alt={`Promotional banner for ${carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}`}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-12 md:p-20 flex flex-col justify-end">
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-6 md:p-20 flex flex-col justify-end">
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="max-w-3xl h-[260px] flex flex-col justify-end gap-4 overflow-hidden"
+                    className="max-w-3xl h-auto md:h-[260px] flex flex-col justify-end gap-3 md:gap-4 overflow-hidden"
                   >
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="bg-accent text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-full shadow-lg shadow-accent/20">Featured</span>
-                      <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Kura Exclusive Choice</span>
+                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                      <span className="bg-accent text-white px-3 md:px-4 py-1 md:py-1.5 text-[8px] md:text-[10px] font-black uppercase rounded-full shadow-lg shadow-accent/20">Featured</span>
+                      <span className="text-white/60 text-[8px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em]">Exclusive Choice</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis shrink-0" title={carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}>
+                    <h1 className="text-xl sm:text-2xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-tight line-clamp-2 overflow-hidden text-ellipsis shrink-0" title={carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}>
                       {carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}
                     </h1>
-                    <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] opacity-60 leading-none truncate shrink-0">
+                    <p className="text-gray-300 text-[8px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] opacity-60 leading-none truncate shrink-0">
                       {carouselAnime[activeIndex].title_english ? carouselAnime[activeIndex].title_romaji : 'Seasonal Spotlight'}
                     </p>
-                    <p className="text-gray-300 text-xs md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-widest font-sans shrink-0">
-                      {carouselAnime[activeIndex].description?.replace(/<[^>]*>/g, '') || "Experience the most anticipated journey of the season first on KAL."}
+                    <p className="hidden xs:block text-gray-300 text-[10px] md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-[0.1em] md:tracking-widest font-sans shrink-0">
+                      {carouselAnime[activeIndex].description?.replace(/<[^>]*>/g, '') || "Experience the anticipated journey first on KAL."}
                     </p>
-                    <div className="flex space-x-4 shrink-0">
-                      <NeonButton onClick={() => router.push('/draft')}>Draft This Series</NeonButton>
-                      <NeonButton variant="outline" accentColor="#ffffff" onClick={() => setActiveIndex((activeIndex + 1) % carouselAnime.length)}>Next Preview</NeonButton>
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 shrink-0 pt-2">
+                      <NeonButton onClick={() => router.push('/draft')} className="py-3 px-6 text-[9px] md:text-[10px]">Draft Series</NeonButton>
+                      <NeonButton variant="outline" accentColor="#ffffff" onClick={() => setActiveIndex((activeIndex + 1) % carouselAnime.length)} className="py-3 px-6 text-[9px] md:text-[10px]">Next Preview</NeonButton>
                     </div>
                   </motion.div>
                 </div>
@@ -475,28 +475,28 @@ export default function Home() {
 
 
             {/* Carousel Navigation */}
-            <div className="absolute bottom-12 right-12 flex gap-4 z-20">
+            <div className="absolute bottom-6 right-6 md:bottom-12 md:right-12 flex gap-2 md:gap-4 z-20">
               <button
                 onClick={prevSlide}
-                className="p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
+                className="p-3 md:p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
               >
-                <ChevronLeft size={24} />
+                <ChevronLeft size={18} />
               </button>
               <button
                 onClick={nextSlide}
-                className="p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
+                className="p-3 md:p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/10 transition-all cursor-pointer text-white"
               >
-                <ChevronRight size={24} />
+                <ChevronRight size={18} />
               </button>
             </div>
 
             {/* Slider Indicators */}
-            <div className="absolute bottom-1 w-full flex justify-center gap-2 pb-10 z-20">
+            <div className="absolute bottom-1 w-full flex justify-center gap-1.5 md:gap-2 pb-6 md:pb-10 z-20">
               {carouselAnime.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveIndex(i)}
-                  className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${i === activeIndex ? 'w-12 bg-accent' : 'w-3 bg-white/20'}`}
+                  className={`h-1 md:h-1.5 rounded-full transition-all duration-500 cursor-pointer ${i === activeIndex ? 'w-8 md:w-12 bg-accent' : 'w-2 md:w-3 bg-white/20'}`}
                 />
               ))}
             </div>
@@ -506,28 +506,28 @@ export default function Home() {
         {showTrending && (
           <>
             {/* Trending Highlights */}
-            <div className="space-y-8 pt-8 px-2">
-              <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Hot Right Now</p>
-                  <h2 className="text-4xl font-black uppercase italic tracking-tighter flex items-center gap-4 font-outfit leading-none">
+            <div className="space-y-6 md:space-y-8 pt-4 md:pt-8 px-1 md:px-2">
+              <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-[var(--border)] pb-4 md:pb-6 gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Hot Right Now</p>
+                  <h2 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter flex items-center gap-3 md:gap-4 font-outfit leading-none text-[var(--foreground)]">
                     Trending Lineup
                   </h2>
                 </div>
                 <button
                   onClick={() => router.push('/draft')}
-                  className="text-xs font-black text-[var(--muted)] hover:text-[var(--foreground)] transition-colors uppercase tracking-widest border border-[var(--border)] px-6 py-3 rounded-full hover:border-accent/40 bg-[var(--surface)] shadow-md cursor-pointer"
+                  className="text-[9px] md:text-xs font-black text-[var(--muted)] hover:text-[var(--foreground)] transition-colors uppercase tracking-widest border border-[var(--border)] px-4 md:px-6 py-2.5 md:py-3 rounded-full hover:border-accent/40 bg-[var(--surface)] shadow-md cursor-pointer w-full md:w-auto"
                 >
-                  View all database
+                  View database
                 </button>
               </div>
 
               {loading ? (
                 <div className="flex justify-center py-20">
-                  <Loader2 className="animate-spin text-accent" size={40} />
+                  <Loader2 className="animate-spin text-accent" size={32} />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-10">
                   {trendingShows.map((show, index) => (
                     <motion.div
                       key={show.id}
@@ -535,26 +535,26 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                       onClick={() => router.push('/draft')}
-                      className="group relative rounded-3xl overflow-hidden border border-[var(--border)] hover:border-accent/40 transition-all cursor-pointer bg-[var(--surface)] shadow-xl"
+                      className="group relative rounded-2xl md:rounded-3xl overflow-hidden border border-[var(--border)] hover:border-accent/40 transition-all cursor-pointer bg-[var(--surface)] shadow-lg md:shadow-xl"
                     >
-                      <div className="aspect-[16/10] overflow-hidden">
+                      <div className="aspect-[16/9] md:aspect-[16/10] overflow-hidden">
                         <img
                           src={show.external_banner_url || show.banner_image || show.cover_image}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-[0.8] group-hover:brightness-100"
                           alt={`Trending anime: ${show.title_english || show.title_romaji}`}
                         />
                       </div>
-                      <div className="p-8 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1 max-w-[70%]">
-                            <h3 className="text-xl font-black text-[var(--foreground)] uppercase tracking-tight truncate leading-tight" title={show.title_english || show.title_romaji}>
+                      <div className="p-5 md:p-8 space-y-3 md:space-y-4">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="space-y-0.5 md:space-y-1 min-w-0 flex-1">
+                            <h3 className="text-base md:text-xl font-black text-[var(--foreground)] uppercase tracking-tight truncate leading-tight" title={show.title_english || show.title_romaji}>
                               {show.title_english || show.title_romaji}
                             </h3>
-                            <p className="text-[var(--muted)] text-[10px] font-bold uppercase tracking-widest truncate">
+                            <p className="text-[var(--muted)] text-[8px] md:text-[10px] font-bold uppercase tracking-widest truncate">
                               {show.title_english ? show.title_romaji : 'Original Series'}
                             </p>
                           </div>
-                          <div className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black">{show.cost_kp} KP</div>
+                          <div className="bg-accent/10 text-accent border border-accent/20 px-2.5 py-1 rounded-full text-[8px] md:text-[9px] font-black shrink-0">{show.cost_kp} KP</div>
                         </div>
                       </div>
                     </motion.div>
@@ -568,46 +568,46 @@ export default function Home() {
         {(showPlaybook || showMarketPulse) && (
           <>
             {/* Market Pulse & Game Guide */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
               {showPlaybook && (
-                <div className="lg:col-span-2 space-y-10">
-                  <div className="bg-[var(--surface)] p-10 rounded-[3rem] border border-[var(--border)] shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-12 opacity-5 -scale-x-100">
-                      <Swords size={200} />
+                <div className="lg:col-span-2 space-y-8 md:space-y-10">
+                  <div className="bg-[var(--surface)] p-6 md:p-10 rounded-2xl md:rounded-[3rem] border border-[var(--border)] shadow-xl md:shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 md:p-12 opacity-[0.03] md:opacity-5 -scale-x-100 pointer-events-none">
+                      <Swords size={120} />
                     </div>
-                    <div className="relative z-10 space-y-8">
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Playbook</p>
-                        <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Fresh Tactics</h3>
+                    <div className="relative z-10 space-y-6 md:space-y-8">
+                      <div className="space-y-1 md:space-y-2">
+                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Playbook</p>
+                        <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Fresh Tactics</h3>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Pick your roster</p>
-                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
-                            Draft five shows that match your vibe while keeping inside the 20,000 KP budget. Top-tier picks cost more, so balance hype and value.
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                        <div className="space-y-2 md:space-y-4">
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Pick your roster</p>
+                          <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
+                            Draft five shows within the 20,000 KP budget. Balance hype and value.
                             <span className="text-accent italic"> Drafts lock Friday at 12:00 UTC.</span>
                           </p>
                         </div>
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">02. Track the buzz</p>
-                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
-                            When the season drops, KP arrives from AniList scores, momentum swings, and community chatter. Leaderboards refresh every Monday so you can see where you stand.
+                        <div className="space-y-2 md:space-y-4">
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">02. Track the buzz</p>
+                          <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
+                            KP arrives from AniList scores, momentum swings, and community chatter. Leaderboards refresh every Monday.
                           </p>
                         </div>
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">03. Ride the swings</p>
-                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
-                            KP prices update daily. A sleeper snagged for 1,500 KP could spike to 4,000 KP, instantly boosting your squad value.
+                        <div className="space-y-2 md:space-y-4">
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">03. Ride the swings</p>
+                          <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
+                            KP prices update daily. A sleeper snagged for 1,500 KP could spike to 4,000 KP, boosting squad value.
                           </p>
                         </div>
-                        <div className="space-y-4">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">04. Bet on the week</p>
-                          <p className="text-[var(--muted)] text-xs leading-relaxed font-medium">
-                            Use extra KP in Prediction Markets to call weekly twists (like “Will Hero Academia stay above 8.5?”) and score bonus points when you nail it.
+                        <div className="space-y-2 md:space-y-4">
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">04. Bet on the week</p>
+                          <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
+                            Use extra KP in Prediction Markets to call weekly twists and score bonus points.
                           </p>
                         </div>
                       </div>
-                      <NeonButton onClick={() => router.push('/draft')} className="w-full md:w-fit py-4 px-10">
+                      <NeonButton onClick={() => router.push('/draft')} className="w-full md:w-fit py-3.5 md:py-4 px-10 text-[10px]">
                         Start Draft
                       </NeonButton>
                     </div>
@@ -615,31 +615,31 @@ export default function Home() {
                 </div>
               )}
               {showMarketPulse && (
-                <div className="space-y-8">
-                  <div className="flex justify-between items-center px-2">
-                    <h3 className="text-xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Market Pulse</h3>
-                    <div className="p-2 bg-green-500/10 rounded-lg text-green-500 text-[8px] font-black animate-pulse">
+                <div className="space-y-6 md:space-y-8">
+                  <div className="flex justify-between items-center px-1 md:px-2">
+                    <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Market Pulse</h3>
+                    <div className="px-2 py-1 bg-green-500/10 rounded-lg text-green-500 text-[7px] md:text-[8px] font-black animate-pulse">
                       LIVE FEED
                     </div>
                   </div>
-                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] divide-y divide-[var(--border)] overflow-hidden shadow-xl">
+                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2.5rem] divide-y divide-[var(--border)] overflow-hidden shadow-lg md:shadow-xl">
                     {marketPulseAnime.slice(0, 5).map((anime, i) => (
-                      <div key={i} className="p-5 flex items-center gap-4 hover:bg-[var(--surface-hover)] transition-all group">
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0" />
+                      <div key={i} className="p-4 md:p-5 flex items-center gap-3 md:gap-4 hover:bg-[var(--surface-hover)] transition-all group">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0" />
                           <div className="min-w-0">
-                            <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate" title={anime.title_english || anime.title_romaji}>
+                            <p className="text-[9px] md:text-[10px] font-black text-[var(--foreground)] uppercase truncate" title={anime.title_english || anime.title_romaji}>
                               {anime.title_english || anime.title_romaji}
                             </p>
-                            <p className="text-[8px] font-black text-accent uppercase tracking-widest truncate opacity-70">
+                            <p className="text-[7px] md:text-[8px] font-black text-accent uppercase tracking-widest truncate opacity-70">
                               {anime.title_english ? anime.title_romaji : 'Active Market'}
                             </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[11px] font-black text-[var(--foreground)] italic leading-none mb-1">{anime.cost_kp} KP</p>
-                          <p className={`text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {anime.hype_change >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                          <p className="text-[10px] md:text-[11px] font-black text-[var(--foreground)] italic leading-none mb-1">{anime.cost_kp} KP</p>
+                          <p className={`text-[7px] md:text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {anime.hype_change >= 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
                             {anime.hype_change > 0 ? '+' : ''}{anime.hype_change || 0}%
                           </p>
                         </div>
@@ -647,7 +647,7 @@ export default function Home() {
                     ))}
                     <button
                       onClick={() => router.push('/hype')}
-                      className="w-full p-5 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] hover:text-accent transition-colors bg-[var(--surface-hover)]/30"
+                      className="w-full p-4 md:p-5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--muted)] hover:text-accent transition-colors bg-[var(--surface-hover)]/30"
                     >
                       View Hype Rankings
                     </button>
@@ -661,22 +661,22 @@ export default function Home() {
         {showLeaderboard && topPerformers.length > 0 && (
           <>
             {/* Leaderboard Preview & Season Highlights */}
-            <div className="space-y-8 pt-10">
-              <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Top Performers</p>
-                  <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Elite Managers</h2>
+            <div className="space-y-6 md:space-y-8 pt-6 md:pt-10 px-1 md:px-2">
+              <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-[var(--border)] pb-4 md:pb-6 gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Top Performers</p>
+                  <h2 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Elite Managers</h2>
                 </div>
-                <button onClick={() => router.push('/rankings')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">View Global Rankings</button>
+                <button onClick={() => router.push('/rankings')} className="text-[9px] md:text-[10px] font-black text-accent uppercase tracking-[0.15em] md:tracking-[0.2em] hover:underline cursor-pointer text-left md:text-right">View Global Rankings</button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
                 {topPerformers.map((usr, i) => (
-                  <div key={i} className="bg-[var(--surface-hover)] px-4 py-5 rounded-[2rem] border border-[var(--border)] flex items-center gap-3 group hover:border-accent/30 transition-all cursor-default min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[10px] shrink-0 border border-accent/10">{usr.rank}</div>
-                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-9 h-9 rounded-full border border-accent/20 shrink-0" />
+                  <div key={i} className="bg-[var(--surface-hover)] px-4 py-4 md:py-5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] flex items-center gap-3 group hover:border-accent/30 transition-all cursor-default min-w-0 shadow-sm">
+                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[9px] md:text-[10px] shrink-0 border border-accent/10">{usr.rank}</div>
+                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-8 h-8 md:w-9 md:h-9 rounded-full border border-accent/20 shrink-0" />
                     <div className="min-w-0 flex-1 leading-tight">
-                      <p className="text-[11px] font-black text-[var(--foreground)] uppercase truncate" title={usr.name}>{usr.name}</p>
-                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{usr.kp} Total KP</p>
+                      <p className="text-[10px] md:text-[11px] font-black text-[var(--foreground)] uppercase truncate" title={usr.name}>{usr.name}</p>
+                      <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{usr.kp} Total KP</p>
                     </div>
                   </div>
                 ))}
@@ -686,31 +686,31 @@ export default function Home() {
         )}
 
         {/* Top Characters / Recruits section */}
-        <div className="space-y-8 pt-10 pb-20">
-          <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
-            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Star Power</p>
-              <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Top Seasonal Recruits</h2>
+        <div className="space-y-6 md:space-y-8 pt-6 md:pt-10 pb-16 md:pb-20 px-1 md:px-2">
+          <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-[var(--border)] pb-4 md:pb-6 gap-4">
+            <div className="space-y-1 md:space-y-2">
+              <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Star Power</p>
+              <h2 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Top Recruits</h2>
             </div>
-            <button onClick={() => router.push('/draft')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">Draft now</button>
+            <button onClick={() => router.push('/draft')} className="text-[9px] md:text-[10px] font-black text-accent uppercase tracking-[0.15em] md:tracking-[0.2em] hover:underline cursor-pointer text-left md:text-right">Draft now</button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {topCharacters.map((char) => (
               <div 
                 key={char.id} 
                 onClick={() => setSelectedCharacter(char)}
-                className="bg-[var(--surface)] border border-[var(--border)] p-8 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col items-center text-center cursor-pointer min-w-0"
+                className="bg-[var(--surface)] border border-[var(--border)] p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] space-y-4 md:space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col items-center text-center cursor-pointer min-w-0"
               >
-                <div className="w-28 h-28 rounded-3xl overflow-hidden shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-xl md:shadow-2xl">
                   <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                 </div>
-                <div className="space-y-3 w-full">
+                <div className="space-y-2 md:space-y-3 w-full">
                   <div className="space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent">{char.role}</p>
-                    <h3 className="text-xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)] truncate w-full px-2" title={char.name}>{char.name}</h3>
+                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">{char.role}</p>
+                    <h3 className="text-lg md:text-xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)] truncate w-full px-1" title={char.name}>{char.name}</h3>
                   </div>
-                  <p className="text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider text-[10px] line-clamp-2 px-2">
-                    Featured in <span className="text-accent">{char.anime_title}</span> with {char.favorites.toLocaleString()} favorites.
+                  <p className="text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider text-[9px] md:text-[10px] line-clamp-2 px-1">
+                    Featured in <span className="text-accent">{char.anime_title}</span>
                   </p>
                 </div>
               </div>

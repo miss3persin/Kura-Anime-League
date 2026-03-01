@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (admin instanceof NextResponse) return admin;
 
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    limit: 50
+    perPage: 50
   });
 
   if (error) {

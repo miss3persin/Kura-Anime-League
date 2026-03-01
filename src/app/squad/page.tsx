@@ -9,6 +9,7 @@ import {
     Loader2, Star, Heart, RefreshCw, Info, Plus, Shield, CheckCircle, AlertCircle
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface Anime {
     id: number;
@@ -229,82 +230,84 @@ export default function SquadPage() {
 
     return (
         <AppShell>
-            <div className="space-y-10">
+            <div className="space-y-6 md:space-y-10">
                 {/* Header HUD */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[var(--surface)] p-8 rounded-[2rem] border border-[var(--border)] shadow-2xl backdrop-blur-md">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-[var(--surface)] p-6 md:p-8 rounded-2xl md:rounded-[2rem] border border-[var(--border)] shadow-2xl backdrop-blur-md">
                     <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
-                                <Shield size={24} />
+                        <div className="flex items-center gap-3 md:gap-4">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                                <Shield size={20} />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">My Squad</h1>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Week {team?.week_number || 1}</span>
+                                <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">My Squad</h1>
+                                <div className="flex items-center gap-2 md:gap-3 mt-0.5 md:mt-1">
+                                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Week {team?.week_number || 1}</span>
                                     <div className="w-1 h-1 rounded-full bg-[var(--border)]"></div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-accent">{team?.remaining_kp.toLocaleString() || 0} KP Remaining</span>
+                                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-accent">{team?.remaining_kp.toLocaleString() || 0} KP</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl px-6 py-3 flex items-center gap-4 shadow-sm">
-                            <div className="text-center border-r border-[var(--border)] pr-4">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Free Transfers</p>
-                                <p className="text-sm font-black text-[var(--foreground)]">{Math.max(0, (team?.free_transfers || 2) - (team?.transfers_used || 0))}</p>
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                        <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl md:rounded-2xl px-4 md:px-6 py-2.5 md:py-3 flex items-center gap-3 md:gap-4 shadow-sm grow md:grow-0">
+                            <div className="text-center border-r border-[var(--border)] pr-3 md:pr-4">
+                                <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Free</p>
+                                <p className="text-xs md:text-sm font-black text-[var(--foreground)]">{Math.max(0, (team?.free_transfers || 2) - (team?.transfers_used || 0))}</p>
                             </div>
-                            <button onClick={() => setTransferMode(!transferMode)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${transferMode ? 'bg-yellow-500 text-black' : 'hover:bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
-                                <ArrowLeftRight size={14} />
-                                {transferMode ? 'Cancel' : 'Manage Transfers'}
+                            <button onClick={() => setTransferMode(!transferMode)} className={`flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all grow ${transferMode ? 'bg-yellow-500 text-black' : 'hover:bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                                <ArrowLeftRight size={12} />
+                                {transferMode ? 'Cancel' : 'Transfers'}
                             </button>
                         </div>
                         {weeklyScore && (
-                            <div className="bg-accent text-white px-6 py-4 rounded-2xl shadow-lg flex flex-col items-center">
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-80">Last Week</span>
-                                <span className="text-xl font-black italic">{weeklyScore} PTS</span>
+                            <div className="bg-accent text-white px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl shadow-lg flex flex-row md:flex-col items-center gap-2 md:gap-0 grow md:grow-0 justify-center">
+                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] opacity-80">Last Week</span>
+                                <span className="text-sm md:text-xl font-black italic">{weeklyScore} PTS</span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {message && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={`p-4 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-3 ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
-                        {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={`p-4 rounded-xl border text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-3 ${message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                        {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                         {message.text}
                     </motion.div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-                    <div className="xl:col-span-2 space-y-10">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-10">
+                    <div className="xl:col-span-2 space-y-8 md:space-y-10">
                         {/* Anime Lineup */}
-                        <div className="space-y-6">
-                            <h3 className="text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">My Team</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">My Team</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                 {myPicks.map((anime) => {
                                     const isCaptain = team?.captain_anime_id === anime.id;
                                     const isVC = team?.vice_captain_anime_id === anime.id;
                                     const isTarget = transferOut?.id === anime.id;
                                     return (
-                                        <div key={anime.id} className={`bg-[var(--surface)] border rounded-3xl p-5 flex items-center gap-5 transition-all shadow-sm ${isTarget ? 'border-yellow-500 bg-yellow-500/5' : 'border-[var(--border)]'}`}>
-                                            <div className="relative w-20 h-28 shrink-0 group">
-                                                <img src={anime.cover_image} className="w-full h-full object-cover rounded-2xl shadow-xl transition-transform group-hover:scale-105" alt="cover" />
-                                                {isCaptain && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center border-2 border-black shadow-lg"><Crown size={16} /></div>}
-                                                {isVC && <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-slate-400 text-black flex items-center justify-center border-2 border-black shadow-lg"><span className="text-[10px] font-black">VC</span></div>}
+                                        <div key={anime.id} className={`bg-[var(--surface)] border rounded-2xl md:rounded-3xl p-4 md:p-5 flex items-center gap-4 md:gap-5 transition-all shadow-sm ${isTarget ? 'border-yellow-500 bg-yellow-500/5' : 'border-[var(--border)]'}`}>
+                                            <div className="relative w-16 h-24 md:w-20 md:h-28 shrink-0 group cursor-pointer" onClick={() => transferMode && setTransferOut(isTarget ? null : anime)}>
+                                                <img src={anime.cover_image} className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-lg transition-transform group-hover:scale-105" alt="cover" />
+                                                {isCaptain && <div className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-500 text-black flex items-center justify-center border-2 border-black shadow-lg"><Crown size={12} /></div>}
+                                                {isVC && <div className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-slate-400 text-black flex items-center justify-center border-2 border-black shadow-lg"><span className="text-[8px] md:text-[10px] font-black">VC</span></div>}
                                             </div>
-                                            <div className="grow min-w-0 space-y-3">
-                                                <div>
-                                                    <h4 className="text-sm font-black uppercase truncate text-[var(--foreground)] italic">{anime.title_english || anime.title_romaji}</h4>
-                                                    <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">{anime.genres?.[0] || 'Team Pick'}</p>
+                                            <div className="grow min-w-0 space-y-2 md:space-y-3">
+                                                <div className="cursor-pointer" onClick={() => transferMode && setTransferOut(isTarget ? null : anime)}>
+                                                    <h4 className="text-[11px] md:text-sm font-black uppercase truncate text-[var(--foreground)] italic">{anime.title_english || anime.title_romaji}</h4>
+                                                    <p className="text-[8px] md:text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">{anime.genres?.[0] || 'Team Pick'}</p>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1.5 md:gap-2">
                                                     {!transferMode ? (
                                                         <>
-                                                            <button onClick={() => setCapData('captain_anime_id', isCaptain ? null : anime.id)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isCaptain ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-yellow-500'}`}>Captain</button>
-                                                            <button onClick={() => setCapData('vice_captain_anime_id', isVC ? null : anime.id)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isVC ? 'bg-slate-400 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-slate-400'}`}>VC</button>
+                                                            <button onClick={() => setCapData('captain_anime_id', isCaptain ? null : anime.id)} className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[7px] md:text-[8px] font-black uppercase transition-all ${isCaptain ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-yellow-500'}`}>Cap</button>
+                                                            <button onClick={() => setCapData('vice_captain_anime_id', isVC ? null : anime.id)} className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[7px] md:text-[8px] font-black uppercase transition-all ${isVC ? 'bg-slate-400 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-slate-400'}`}>VC</button>
                                                         </>
                                                     ) : (
-                                                        <button onClick={() => setTransferOut(isTarget ? null : anime)} className={`w-full py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${isTarget ? 'bg-yellow-500 text-black' : 'bg-[var(--background)] text-[var(--muted)] hover:text-yellow-500'}`}>Replace</button>
+                                                        <button onClick={() => setTransferOut(isTarget ? null : anime)} className={`w-full py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase border transition-all ${isTarget ? 'bg-yellow-500 text-black' : 'bg-[var(--background)] text-[var(--muted)] hover:text-yellow-500'}`}>
+                                                            {isTarget ? 'Deselect' : 'Replace'}
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>
@@ -315,35 +318,35 @@ export default function SquadPage() {
                         </div>
 
                         {/* Character Recruits */}
-                        <div className="space-y-6">
-                            <h3 className="text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] flex items-center gap-3">
-                                <Star size={20} className="text-accent fill-accent" /> Special Recruits
+                        <div className="space-y-4 md:space-y-6">
+                            <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] flex items-center gap-2 md:gap-3 px-1">
+                                <Star size={18} className="text-accent fill-accent" /> Special Recruits
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                 {['STAR_CHAR', 'WAIFU_HUSBANDO'].map((type) => {
                                     const char = myCharacters.find(c => c.pick_type === type);
                                     return (
-                                        <div key={type} className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 flex items-center gap-5 shadow-sm">
-                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
+                                        <div key={type} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-4 md:p-5 flex items-center gap-4 md:gap-5 shadow-sm">
+                                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
                                                 {char ? (
                                                     <img src={char.image} className="w-full h-full object-cover" alt="char" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[var(--muted)]/20"><Plus size={32} /></div>
+                                                    <div className="w-full h-full flex items-center justify-center text-[var(--muted)]/20"><Plus size={24} /></div>
                                                 )}
                                             </div>
                                             <div className="min-w-0 grow">
-                                                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-accent mb-1">{type === 'STAR_CHAR' ? 'Star Recruit' : 'Waifu / Husbando'}</p>
+                                                <p className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent mb-0.5 md:mb-1">{type === 'STAR_CHAR' ? 'Star Recruit' : 'Waifu / Husbando'}</p>
                                                 {char ? (
-                                                    <div className="space-y-1">
-                                                        <h4 className="text-sm font-black uppercase truncate text-[var(--foreground)] italic">{char.name}</h4>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{char.role}</span>
+                                                    <div className="space-y-0.5 md:space-y-1">
+                                                        <h4 className="text-[11px] md:text-sm font-black uppercase truncate text-[var(--foreground)] italic">{char.name}</h4>
+                                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                                            <span className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{char.role}</span>
                                                             <Heart size={8} className="text-pink-500 fill-pink-500" />
-                                                            <span className="text-[8px] font-bold text-pink-500">{char.favorites.toLocaleString()}</span>
+                                                            <span className="text-[7px] md:text-[8px] font-bold text-pink-500">{char.favorites.toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <button onClick={() => router.push('/draft')} className="text-[10px] font-black uppercase text-[var(--muted)] hover:text-accent transition-colors">Pick a Character</button>
+                                                    <button onClick={() => router.push('/draft')} className="text-[9px] md:text-[10px] font-black uppercase text-[var(--muted)] hover:text-accent transition-colors">Pick a Character</button>
                                                 )}
                                             </div>
                                         </div>
@@ -354,38 +357,38 @@ export default function SquadPage() {
                     </div>
 
                     {/* Sidebar Trends */}
-                    <div className="space-y-6">
-                        <h3 className="text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">
+                    <div className="space-y-4 md:space-y-6">
+                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">
                             {transferMode ? 'Market Selection' : 'Market Trends'}
                         </h3>
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-xl p-6 space-y-4">
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2rem] overflow-hidden shadow-xl p-4 md:p-6 space-y-4">
                             {allAnime.slice(0, 8).map((anime) => {
                                 const alreadyOwn = myPicks.some(p => p.id === anime.id);
                                 if (!transferMode && alreadyOwn) return null;
                                 return (
-                                    <div key={anime.id} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <img src={anime.cover_image} className="w-10 h-14 object-cover rounded-lg shadow-lg" alt="thumb" />
+                                    <div key={anime.id} className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                                            <img src={anime.cover_image} className="w-8 h-12 md:w-10 md:h-14 object-cover rounded-lg shadow-lg shrink-0" alt="thumb" />
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-black uppercase truncate w-32 text-[var(--foreground)]">{anime.title_english || anime.title_romaji}</p>
+                                                <p className="text-[9px] md:text-[10px] font-black uppercase truncate w-24 md:w-32 text-[var(--foreground)]">{anime.title_english || anime.title_romaji}</p>
                                                 <p className="text-[7px] font-bold text-[var(--muted)] uppercase tracking-widest">{anime.cost_kp.toLocaleString()} KP</p>
                                             </div>
                                         </div>
                                         {transferMode && transferOut && !alreadyOwn ? (
-                                            <button onClick={() => handleTransfer(anime)} className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center hover:scale-110 shadow-lg shadow-accent/20"><CheckCircle size={18} /></button>
+                                            <button onClick={() => handleTransfer(anime)} className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-accent text-white flex items-center justify-center hover:scale-110 shadow-lg shadow-accent/20 shrink-0"><CheckCircle size={14} /></button>
                                         ) : (
-                                            <div className="text-right">
-                                                <p className="text-[10px] font-black text-accent italic">{anime.hype_score}</p>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[9px] md:text-[10px] font-black text-accent italic">{anime.hype_score}</p>
                                                 <div className={`flex items-center justify-end gap-0.5 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {anime.hype_change >= 0 ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                                                    <span className="text-[8px] font-black">{Math.abs(anime.hype_change)}</span>
+                                                    {anime.hype_change >= 0 ? <TrendingUp size={7} /> : <TrendingDown size={7} />}
+                                                    <span className="text-[7px] md:text-[8px] font-black">{Math.abs(anime.hype_change)}</span>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 );
                             })}
-                            <button onClick={() => router.push('/hype')} className="w-full py-4 bg-[var(--surface-hover)] hover:bg-accent hover:text-white text-[8px] font-black uppercase tracking-widest text-[var(--muted)] transition-all rounded-xl mt-4">Full Index</button>
+                            <button onClick={() => router.push('/hype')} className="w-full py-3 md:py-4 bg-[var(--surface-hover)] hover:bg-accent hover:text-white text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)] transition-all rounded-lg md:rounded-xl mt-2 md:mt-4">Full Index</button>
                         </div>
                     </div>
                 </div>

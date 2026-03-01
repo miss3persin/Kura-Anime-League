@@ -164,38 +164,38 @@ export default function ProfilePage() {
 
     return (
         <AppShell>
-            <div className="space-y-12 pb-20">
+            <div className="space-y-8 md:space-y-12 pb-20">
                 {/* User Stats Card */}
-                <div className="bg-[var(--surface)] rounded-[2.5rem] p-10 border border-[var(--border)] relative overflow-hidden shadow-2xl">
-                    <div className="absolute top-0 right-0 p-12 opacity-5">
-                        <Users size={180} className="text-accent" />
+                <div className="bg-[var(--surface)] rounded-2xl md:rounded-[2.5rem] p-6 md:p-10 border border-[var(--border)] relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 p-8 md:p-12 opacity-[0.03] md:opacity-5 pointer-events-none">
+                        <Users size={120} className="text-accent" />
                     </div>
-                    <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
-                        <div className="w-32 h-32 rounded-full border-4 border-accent p-1 bg-[var(--background)] shadow-xl">
+                    <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 relative z-10">
+                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-accent p-1 bg-[var(--background)] shadow-xl shrink-0">
                             <img
                                 src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
                                 className="w-full h-full rounded-full bg-[var(--surface-hover)] object-cover"
                                 alt="avatar"
                             />
                         </div>
-                        <div className="text-center md:text-left space-y-4 grow">
+                        <div className="text-center md:text-left space-y-4 grow w-full md:w-auto">
                             <div>
-                                <h2 className="text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)]">
+                                <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none mb-2 md:mb-1">
                                     {profile?.username || user.user_metadata?.username || user.email?.split('@')[0]}
                                 </h2>
-                                <span className="text-accent font-black uppercase tracking-[0.3em] text-[10px] bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
+                                <span className="text-accent font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-[10px] bg-accent/10 px-3 py-1 rounded-full border border-accent/20 inline-block">
                                     {profile?.tier || 'Bronze'} Tier Player
                                 </span>
                             </div>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-8">
-                                <div>
-                                    <p className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest mb-1">Total KP</p>
-                                    <p className="text-3xl font-black italic text-[var(--foreground)]">{profile?.total_kp?.toLocaleString() || 0}</p>
+                            <div className="flex flex-row justify-center md:justify-start gap-6 md:gap-8 border-t md:border-t-0 border-[var(--border)] pt-4 md:pt-0">
+                                <div className="flex-1 md:flex-none">
+                                    <p className="text-[8px] md:text-[10px] font-black text-[var(--muted)] uppercase tracking-widest mb-0.5 md:mb-1">Total KP</p>
+                                    <p className="text-xl md:text-3xl font-black italic text-[var(--foreground)] leading-none">{profile?.total_kp?.toLocaleString() || 0}</p>
                                 </div>
-                                <div className="w-px h-10 bg-[var(--border)] hidden md:block mt-2"></div>
-                                <div>
-                                    <p className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest mb-1">Player Level</p>
-                                    <p className="text-3xl font-black italic text-accent">LVL {profile?.level || 1}</p>
+                                <div className="w-px h-8 md:h-10 bg-[var(--border)] mt-1 md:mt-2"></div>
+                                <div className="flex-1 md:flex-none">
+                                    <p className="text-[8px] md:text-[10px] font-black text-[var(--muted)] uppercase tracking-widest mb-0.5 md:mb-1">Level</p>
+                                    <p className="text-xl md:text-3xl font-black italic text-accent leading-none">LVL {profile?.level || 1}</p>
                                 </div>
                             </div>
                         </div>
@@ -203,67 +203,67 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Team Roster */}
-                <div className="space-y-10">
-                    <div className="flex justify-between items-center px-2">
-                        <h3 className="text-2xl font-black uppercase italic tracking-tighter font-outfit flex items-center gap-3 text-[var(--foreground)]">
-                            <Zap size={24} className="text-accent fill-accent" /> Current Team
+                <div className="space-y-6 md:space-y-10 px-1">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                        <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter font-outfit flex items-center gap-2 md:gap-3 text-[var(--foreground)]">
+                            <Zap size={20} className="text-accent fill-accent" /> Current Team
                         </h3>
-                        <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest">{seasonName}</span>
+                        <span className="text-[8px] md:text-[10px] font-black text-[var(--muted)] uppercase tracking-widest">{seasonName}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                         {/* Anime Series */}
-                        <div className="xl:col-span-2 space-y-6">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">My Anime Picks</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="xl:col-span-2 space-y-4 md:space-y-6">
+                            <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[var(--muted)]">My Anime Picks</p>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                                 {picks.map((pick) => (
-                                    <div key={pick.id} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-xl group">
+                                    <div key={pick.id} className="bg-[var(--surface)] rounded-2xl md:rounded-3xl border border-[var(--border)] overflow-hidden shadow-lg md:shadow-xl group">
                                         <div className="aspect-[3/4] overflow-hidden">
                                             <img src={pick.anime_cache.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="cover" />
                                         </div>
-                                        <div className="p-5">
-                                            <h4 className="text-[10px] font-black uppercase tracking-tight truncate mb-1 text-[var(--foreground)]">{pick.anime_cache.title_english || pick.anime_cache.title_romaji}</h4>
-                                            <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{pick.anime_cache.title_english ? pick.anime_cache.title_romaji : pick.anime_cache.format}</p>
+                                        <div className="p-3 md:p-5">
+                                            <h4 className="text-[9px] md:text-[10px] font-black uppercase tracking-tight truncate mb-0.5 md:mb-1 text-[var(--foreground)]">{pick.anime_cache.title_english || pick.anime_cache.title_romaji}</h4>
+                                            <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{pick.anime_cache.title_english ? pick.anime_cache.title_romaji : pick.anime_cache.format}</p>
                                         </div>
                                     </div>
                                 ))}
                                 {Array.from({ length: Math.max(0, 5 - picks.length) }).map((_, i) => (
-                                    <div key={i} className="bg-[var(--surface)] rounded-3xl border-2 border-dashed border-[var(--border)] aspect-[3/4] flex flex-col items-center justify-center p-6 opacity-30 shadow-sm">
-                                        <div className="w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center mb-2">+</div>
-                                        <p className="text-[7px] font-black uppercase text-[var(--muted)] tracking-widest">Awaiting Draft</p>
+                                    <div key={i} className="bg-[var(--surface)] rounded-2xl md:rounded-3xl border-2 border-dashed border-[var(--border)] aspect-[3/4] flex flex-col items-center justify-center p-4 md:p-6 opacity-30 shadow-sm">
+                                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border border-[var(--border)] flex items-center justify-center mb-1 md:mb-2 text-xs md:text-base">+</div>
+                                        <p className="text-[6px] md:text-[7px] font-black uppercase text-[var(--muted)] tracking-widest">Awaiting</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Special Recruits */}
-                        <div className="space-y-6">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">Special Recruits</p>
-                            <div className="space-y-4">
+                        <div className="space-y-4 md:space-y-6">
+                            <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[var(--muted)]">Special Recruits</p>
+                            <div className="space-y-3 md:space-y-4">
                                 {['STAR_CHAR', 'WAIFU_HUSBANDO'].map((type) => {
                                     const pick = charPicks.find(p => p.pick_type === type);
                                     return (
-                                        <div key={type} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] p-5 flex items-center gap-5 shadow-xl">
-                                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
+                                        <div key={type} className="bg-[var(--surface)] rounded-2xl md:rounded-3xl border border-[var(--border)] p-4 md:p-5 flex items-center gap-4 md:gap-5 shadow-lg md:shadow-xl">
+                                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden border-2 border-white/5 bg-[var(--background)] shrink-0">
                                                 {pick ? (
                                                     <img src={pick.character_cache.image} className="w-full h-full object-cover" alt="char" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[var(--muted)]/20 text-xl font-black">?</div>
+                                                    <div className="w-full h-full flex items-center justify-center text-[var(--muted)]/20 text-lg md:text-xl font-black">?</div>
                                                 )}
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-accent mb-1">{type === 'STAR_CHAR' ? 'Star Recruit' : 'Waifu / Husbando'}</p>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent mb-0.5 md:mb-1">{type === 'STAR_CHAR' ? 'Star Recruit' : 'Waifu / Husbando'}</p>
                                                 {pick ? (
-                                                    <div className="space-y-1">
-                                                        <h4 className="text-sm font-black uppercase truncate text-[var(--foreground)] italic">{pick.character_cache.name}</h4>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{pick.character_cache.role}</span>
-                                                            <Heart size={8} className="text-pink-500 fill-pink-500" />
-                                                            <span className="text-[8px] font-bold text-pink-500">{pick.character_cache.favorites.toLocaleString()}</span>
+                                                    <div className="space-y-0.5 md:space-y-1">
+                                                        <h4 className="text-[12px] md:text-sm font-black uppercase truncate text-[var(--foreground)] italic leading-tight">{pick.character_cache.name}</h4>
+                                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                                            <span className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{pick.character_cache.role}</span>
+                                                            <Heart size={8} className="text-pink-500 fill-pink-500 shrink-0" />
+                                                            <span className="text-[7px] md:text-[8px] font-bold text-pink-500">{pick.character_cache.favorites.toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-[10px] font-black uppercase text-[var(--muted)]">Not Assigned</p>
+                                                    <p className="text-[9px] md:text-[10px] font-black uppercase text-[var(--muted)]">Not Assigned</p>
                                                 )}
                                             </div>
                                         </div>
@@ -275,21 +275,21 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Achievements */}
-                <div className="space-y-6 pb-10">
-                    <h3 className="text-2xl font-black uppercase italic tracking-tighter font-outfit flex items-center gap-3 text-[var(--foreground)]">
-                        <Award size={24} className="text-yellow-500" /> Recent Medals
+                <div className="space-y-4 md:space-y-6 pb-10 px-1">
+                    <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter font-outfit flex items-center gap-2 md:gap-3 text-[var(--foreground)]">
+                        <Award size={20} className="text-yellow-500" /> Recent Medals
                     </h3>
                     
                     {achievements.length === 0 ? (
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center opacity-50">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">No medals earned yet. Keep competing!</p>
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl p-6 md:p-8 text-center opacity-50">
+                            <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">No medals earned yet. Keep competing!</p>
                         </div>
                     ) : (
-                        <div className="flex flex-wrap gap-6">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-3 md:gap-6">
                             {achievements.map((ach) => (
-                                <div key={ach.id} className="group relative w-24 h-24 rounded-2xl bg-[var(--surface)] border border-accent/20 flex flex-col items-center justify-center p-4 space-y-2 shadow-lg hover:border-accent cursor-help transition-all">
-                                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-sm">🏅</div>
-                                    <p className="text-[7px] font-black uppercase text-[var(--foreground)] text-center tracking-tighter leading-tight">{ach.name}</p>
+                                <div key={ach.id} className="group relative aspect-square md:w-24 md:h-24 rounded-xl md:rounded-2xl bg-[var(--surface)] border border-accent/20 flex flex-col items-center justify-center p-2 md:p-4 space-y-1 md:space-y-2 shadow-lg hover:border-accent cursor-help transition-all">
+                                    <div className="text-xl md:text-sm mb-1">🏅</div>
+                                    <p className="text-[6px] md:text-[7px] font-black uppercase text-[var(--foreground)] text-center tracking-tighter md:tracking-normal leading-none md:leading-tight line-clamp-2 md:line-clamp-none">{ach.name}</p>
                                 </div>
                             ))}
                         </div>

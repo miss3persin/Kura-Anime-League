@@ -15,6 +15,7 @@ import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 import { useCountdown } from "@/components/ui/season-banner";
 import type { SeasonInfoPayload } from "@/lib/hooks/useSeasonTimeline";
 import { Modal } from "@/components/ui/modal";
+import { cn } from "@/lib/utils";
 
 interface Anime {
   id: number;
@@ -178,7 +179,6 @@ export default function DraftPage() {
         const characters = await fetchCharacters(animeIds).catch((e) => { console.error("Character fetch error:", e); return []; });
 
         setAnimeList(animeForSeason);
-        setPreviewAnime(upcomingAnime.slice(0, 8));
         setCharacterList(characters.map(c => ({
           ...c,
           anime_title: animeMap[c.anime_id] || "Seasonal Series"
@@ -359,38 +359,38 @@ export default function DraftPage() {
 
   return (
     <AppShell>
-      <div className="space-y-10">
+      <div className="space-y-6 md:space-y-10">
         {/* Header HUD */}
-        <div className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-[3.5rem] p-10 md:p-14 shadow-2xl">
-          <div className="absolute top-0 right-0 p-16 opacity-[0.03] rotate-12 pointer-events-none">
-            <LayoutGrid size={320} />
+        <div className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-14 shadow-2xl">
+          <div className="absolute top-0 right-0 p-8 md:p-16 opacity-[0.03] rotate-12 pointer-events-none">
+            <LayoutGrid size={240} className="md:w-[320px] md:h-[320px]" />
           </div>
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${phaseDotClasses}`} />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">{phaseBadgeLabel}</span>
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 md:gap-10">
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className={`w-2.5 h-2.5 rounded-full ${phaseDotClasses}`} />
+                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">{phaseBadgeLabel}</span>
               </div>
               <div className="space-y-2">
-                <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">
+                <h1 className="text-4xl md:text-7xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">
                   The Draft
                 </h1>
-                <p className="text-sm md:text-base text-[var(--muted)] font-bold uppercase tracking-[0.2em]">
-                  {seasonDisplayName} <span className="mx-3 opacity-30">|</span> 20,000 KP Draft Budget
+                <p className="text-xs md:text-base text-[var(--muted)] font-bold uppercase tracking-[0.15em] md:tracking-[0.2em]">
+                  {seasonDisplayName} <span className="mx-2 md:mx-3 opacity-30">|</span> 20,000 KP Budget
                 </p>
               </div>
-              <div className="flex flex-wrap gap-4 pt-4">
-                <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl px-6 py-4 shadow-sm">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">{deadlineLabel}</p>
-                  <p className="text-sm font-black text-[var(--foreground)]">{deadlineValue}</p>
+              <div className="flex flex-wrap gap-3 md:gap-4 pt-2 md:pt-4">
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl md:rounded-2xl px-4 md:px-6 py-2 md:py-4 shadow-sm">
+                  <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)] mb-0.5 md:mb-1">{deadlineLabel}</p>
+                  <p className="text-xs md:text-sm font-black text-[var(--foreground)]">{deadlineValue}</p>
                 </div>
                 {hasCountdown && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 md:gap-2">
                     {countdownSegments.map((seg) => (
-                      <div key={seg.label} className="w-14 h-14 rounded-2xl bg-accent/5 border border-accent/20 flex flex-col items-center justify-center shadow-lg">
-                        <span className="text-lg font-black text-accent leading-none">{String(seg.value).padStart(2, '0')}</span>
-                        <span className="text-[7px] font-black uppercase text-accent/60">{seg.label}</span>
+                      <div key={seg.label} className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-accent/5 border border-accent/20 flex flex-col items-center justify-center shadow-lg">
+                        <span className="text-sm md:text-lg font-black text-accent leading-none">{String(seg.value).padStart(2, '0')}</span>
+                        <span className="text-[6px] md:text-[7px] font-black uppercase text-accent/60">{seg.label}</span>
                       </div>
                     ))}
                   </div>
@@ -398,25 +398,25 @@ export default function DraftPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 min-w-[280px]">
-              <div className="bg-[var(--background)] border border-[var(--border)] rounded-3xl p-8 space-y-6 shadow-xl relative overflow-hidden group">
+            <div className="flex flex-col gap-4 min-w-0 md:min-w-[280px]">
+              <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-4 md:space-y-6 shadow-xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                  <Zap size={40} className="text-accent" />
+                  <Zap size={32} className="text-accent md:w-10 md:h-10" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Available Points</p>
-                  <p className={`text-4xl font-black italic tracking-tighter font-outfit transition-colors ${budgetTone}`}>
-                    {budget.toLocaleString()} <span className="text-xs uppercase align-middle ml-1">KP</span>
+                  <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Available Points</p>
+                  <p className={`text-3xl md:text-4xl font-black italic tracking-tighter font-outfit transition-colors ${budgetTone}`}>
+                    {budget.toLocaleString()} <span className="text-[10px] md:text-xs uppercase align-middle ml-1">KP</span>
                   </p>
                 </div>
-                <div className="w-full bg-[var(--surface-hover)] h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-[var(--surface-hover)] h-1 md:h-1.5 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: "100%" }}
                     animate={{ width: `${(budget / 20000) * 100}%` }}
-                    className="h-full bg-accent shadow-[0_0_15px_var(--accent)]"
+                    className="h-full bg-accent shadow-[0_0_10px_var(--accent)]"
                   />
                 </div>
-                <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest text-center opacity-60">
+                <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest text-center opacity-60">
                   Transaction encryption active
                 </p>
               </div>
@@ -425,34 +425,34 @@ export default function DraftPage() {
         </div>
 
         {/* Search & Tabs HUD */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
-          <div className="flex gap-2 p-1.5 bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-sm">
-            <button onClick={() => setActiveTab('anime')} className={getTabButtonClass('anime')}>Anime Series</button>
-            <button onClick={() => setActiveTab('characters')} className={getTabButtonClass('characters')}>Star Recruits</button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-1 md:px-4">
+          <div className="flex gap-1.5 p-1 bg-[var(--surface)] rounded-xl md:rounded-2xl border border-[var(--border)] shadow-sm">
+            <button onClick={() => setActiveTab('anime')} className={cn(getTabButtonClass('anime'), "px-4 md:px-6 py-2.5 md:py-2 grow md:grow-0")}>Anime Series</button>
+            <button onClick={() => setActiveTab('characters')} className={cn(getTabButtonClass('characters'), "px-4 md:px-6 py-2.5 md:py-2 grow md:grow-0")}>Star Recruits</button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="relative group grow md:grow-0">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={14} />
               <input
                 type="text"
                 placeholder={`Search ${activeTab === 'anime' ? 'Series' : 'Recruits'}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl pl-12 pr-6 py-4 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64"
+                className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-xl md:rounded-2xl pl-10 pr-4 md:pl-12 md:pr-6 py-3 md:py-4 text-[10px] md:text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64"
               />
             </div>
-            <button onClick={handleSync} disabled={syncing} className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer shadow-sm">
-              <RefreshCw className={syncing ? 'animate-spin' : ''} size={20} />
+            <button onClick={handleSync} disabled={syncing} className="p-3 md:p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer shadow-sm">
+              <RefreshCw className={syncing ? 'animate-spin' : ''} size={18} />
             </button>
           </div>
         </div>
 
         {/* Catalog Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-2">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 px-1 md:px-2">
           {loading ? (
             Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="bg-[var(--surface)] aspect-[3/4.5] rounded-3xl border border-[var(--border)] animate-pulse shadow-sm" />
+              <div key={i} className="bg-[var(--surface)] aspect-[3/4.5] rounded-2xl md:rounded-[2rem] border border-[var(--border)] animate-pulse shadow-sm" />
             ))
           ) : activeTab === 'anime' ? (
             filteredAnime.map((anime) => {
@@ -462,36 +462,36 @@ export default function DraftPage() {
                   layout
                   key={anime.id}
                   whileHover={{ y: -8 }}
-                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isSelected ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
+                  className={`group relative bg-[var(--surface)] border rounded-2xl md:rounded-[2rem] overflow-hidden transition-all shadow-lg md:shadow-xl ${isSelected ? 'border-accent ring-2 md:ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
-                  <div className="aspect-[3/4] overflow-hidden relative">
+                  <div className="aspect-[3/4] overflow-hidden relative cursor-pointer" onClick={() => toggleSelectAnime(anime)}>
                     <img src={anime.cover_image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${anime.title_english || anime.title_romaji} cover`} />
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                      <p className="text-[10px] font-black text-white italic">{anime.cost_kp.toLocaleString()} KP</p>
+                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/60 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl border border-white/10">
+                      <p className="text-[8px] md:text-[10px] font-black text-white italic">{anime.cost_kp.toLocaleString()} KP</p>
                     </div>
                     {isSelected && (
                       <div className="absolute inset-0 bg-accent/20 flex items-center justify-center backdrop-blur-[2px]">
-                        <div className="w-14 h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20">
-                          <CheckCircle size={32} />
+                        <div className="w-10 h-10 md:w-14 md:h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl border-2 md:border-4 border-white/20">
+                          <CheckCircle size={20} />
                         </div>
                       </div>
                     )}
                   </div>
-                  <div className="p-6 space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] truncate italic leading-tight">
+                  <div className="p-3 md:p-6 space-y-2 md:space-y-4">
+                    <div className="space-y-0.5 md:space-y-1">
+                      <h3 className="text-[10px] md:text-sm font-black uppercase tracking-tight text-[var(--foreground)] truncate italic leading-tight">
                         {anime.title_english || anime.title_romaji}
                       </h3>
-                      <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">
+                      <p className="text-[7px] md:text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">
                         {anime.title_english ? anime.title_romaji : (anime.format + ' • ' + (anime.genres?.[0] || 'Original'))}
                       </p>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}%</span>
+                      <div className="flex items-center gap-1 md:gap-2">
+                        <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                        <span className="text-[8px] md:text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}%</span>
                       </div>
-                      <button onClick={() => toggleSelectAnime(anime)} disabled={draftClosed} className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-[var(--background)] text-[var(--muted)]' : 'bg-accent text-white'}`}>
+                      <button onClick={() => toggleSelectAnime(anime)} disabled={draftClosed} className={`px-3 py-1.5 md:px-5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-[var(--background)] text-[var(--muted)]' : 'bg-accent text-white'}`}>
                         {isSelected ? 'Remove' : 'Draft'}
                       </button>
                     </div>
@@ -509,38 +509,38 @@ export default function DraftPage() {
                   layout
                   key={char.id}
                   whileHover={{ y: -8 }}
-                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isSelected ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
+                  className={`group relative bg-[var(--surface)] border rounded-2xl md:rounded-[2rem] overflow-hidden transition-all shadow-lg md:shadow-xl ${isSelected ? 'border-accent ring-2 md:ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
                   <div className="aspect-[3/4] overflow-hidden relative cursor-pointer" onClick={() => setSelectedCharacter(char)}>
                     <img src={char.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={`${char.name} profile`} />
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                      <p className="text-[10px] font-black text-white italic">{char.price.toLocaleString()} KP</p>
+                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/60 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl border border-white/10">
+                      <p className="text-[8px] md:text-[10px] font-black text-white italic">{char.price.toLocaleString()} KP</p>
                     </div>
                     {isSelected && (
                       <div className="absolute inset-0 bg-accent/20 flex items-center justify-center backdrop-blur-[2px]">
-                        <div className="w-14 h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl">
-                          {isStar ? <Star size={32} /> : <Heart size={32} />}
+                        <div className="w-10 h-10 md:w-14 md:h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl">
+                          {isStar ? <Star size={20} /> : <Heart size={20} />}
                         </div>
                       </div>
                     )}
-                    <div className="absolute bottom-4 right-4">
-                      <button className="p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white/60 hover:text-white transition-colors">
-                        <Info size={14} />
+                    <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4">
+                      <button className="p-1.5 md:p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white/60 hover:text-white transition-colors">
+                        <Info size={12} />
                       </button>
                     </div>
                   </div>
-                  <div className="p-6 space-y-4 text-center">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] italic truncate leading-tight">{char.name}</h3>
-                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest opacity-60">
-                        {char.role} <span className="mx-1">•</span> {char.favorites.toLocaleString()} Faves
+                  <div className="p-3 md:p-6 space-y-3 md:space-y-4 text-center">
+                    <div className="space-y-0.5 md:space-y-1">
+                      <h3 className="text-[10px] md:text-sm font-black uppercase tracking-tight text-[var(--foreground)] italic truncate leading-tight">{char.name}</h3>
+                      <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest opacity-60">
+                        {char.role} <span className="mx-0.5 md:mx-1">•</span> {char.favorites.toLocaleString()} Faves
                       </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => toggleSelectCharacter(char, 'star')} disabled={draftClosed} className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                    <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                      <button onClick={() => toggleSelectCharacter(char, 'star')} disabled={draftClosed} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
                         Recruit
                       </button>
-                      <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed} className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                      <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
                         {char.role === 'Waifu' ? 'Waifu' : char.role === 'Husbando' ? 'Husbando' : 'Select'}
                       </button>
                     </div>
@@ -558,28 +558,28 @@ export default function DraftPage() {
               initial={{ y: 100 }} 
               animate={{ y: 0 }} 
               exit={{ y: 100 }} 
-              className="fixed bottom-10 left-0 right-0 md:left-72 z-50 px-6 pointer-events-none flex justify-center"
+              className="fixed bottom-24 md:bottom-10 left-0 right-0 md:left-72 z-50 px-4 md:px-6 pointer-events-none flex justify-center"
             >
-              <div className="bg-black/80 backdrop-blur-2xl border-2 border-white/10 rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden w-full max-w-4xl pointer-events-auto">
-                <div className="flex items-center gap-6 relative z-10">
-                  <div className="flex -space-x-4">
+              <div className="bg-black/85 backdrop-blur-2xl border-2 border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 relative overflow-hidden w-full max-w-4xl pointer-events-auto">
+                <div className="flex items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto">
+                  <div className="flex -space-x-3 md:-space-x-4">
                     {selectedAnimeIds.slice(0, 5).map((id) => {
                       const anime = animeList.find(a => a.id === id);
                       return (
-                        <div key={id} className="w-14 h-14 rounded-2xl border-4 border-black bg-[var(--surface)] overflow-hidden shadow-xl">
+                        <div key={id} className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 md:border-4 border-black bg-[var(--surface)] overflow-hidden shadow-xl">
                           <img src={anime?.cover_image} className="w-full h-full object-cover" alt="pick" />
                         </div>
                       );
                     })}
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Your Team</p>
-                    <p className="text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Selected</p>
+                  <div className="space-y-0.5 md:space-y-1">
+                    <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent">Your Team</p>
+                    <p className="text-sm md:text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Selected</p>
                   </div>
                 </div>
-                <button onClick={handleSaveTeam} disabled={saving || draftClosed} className="px-10 py-4 bg-accent text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl flex items-center gap-3">
-                  {saving ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-                  {saving ? 'SAVING CHANGES...' : 'CONFIRM TEAM'}
+                <button onClick={handleSaveTeam} disabled={saving || draftClosed} className="w-full md:w-auto px-6 md:px-10 py-3.5 md:py-4 bg-accent text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] rounded-xl md:rounded-2xl shadow-xl flex items-center justify-center gap-2 md:gap-3">
+                  {saving ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
+                  {saving ? 'SAVING...' : 'CONFIRM TEAM'}
                 </button>
               </div>
             </motion.div>

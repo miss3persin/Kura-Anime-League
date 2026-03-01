@@ -8,6 +8,9 @@ export interface JikanAnimeResult {
   url: string;
   synopsis?: string;
   episodes?: number;
+  members?: number;
+  favorites?: number;
+  score?: number;
 }
 
 export async function fetchMalAnime(query: string): Promise<JikanAnimeResult | null> {
@@ -56,7 +59,10 @@ export async function fetchMalAnime(query: string): Promise<JikanAnimeResult | n
         title: entry.title,
         url: entry.url,
         synopsis: entry.synopsis,
-        episodes: entry.episodes
+        episodes: entry.episodes,
+        members: entry.members,
+        favorites: entry.favorites,
+        score: entry.score
       };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -105,6 +111,15 @@ export async function fetchMalAnimeById(id: number): Promise<JikanAnimeResult | 
   return null;
 }
 
-export async function searchMalAnime(query: string): Promise<JikanAnimeResult | null> {
+export function searchMalAnime(query: string): Promise<JikanAnimeResult | null> {
   return fetchMalAnime(query);
+}
+
+export function normalizeJikanStatus(status: string): string {
+  if (!status) return 'FINISHED';
+  const s = status.toLowerCase();
+  if (s.includes('airing')) return 'RELEASING';
+  if (s.includes('finished')) return 'FINISHED';
+  if (s.includes('not yet aired')) return 'NOT_YET_RELEASED';
+  return 'FINISHED';
 }
