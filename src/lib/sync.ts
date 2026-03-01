@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase/admin';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { fetchAniList, GET_SEASONAL_ANIME, AniListCharacter, AniListSeasonalResponse } from './anilist';
 
 const VALID_SEASON_LABELS = ['WINTER', 'SPRING', 'SUMMER', 'FALL'] as const;
@@ -164,8 +164,9 @@ export function buildAnimeCachePayload(anime: SeasonalAnimeEntry, context: Seaso
         id: anime.id,
         title_romaji: anime.title?.romaji ?? null,
         title_english: anime.title?.english ?? null,
-        // High Resolution Strategy: Prefer extraLarge (typically 460x650)
-        cover_image: anime.coverImage?.extraLarge ?? anime.coverImage?.large ?? null,
+        // High Resolution Strategy: extraLarge is 460x650+, large is 230x325.
+        // We strictly prefer extraLarge for high-quality display in modals.
+        cover_image: anime.coverImage?.extraLarge || anime.coverImage?.large || null,
         banner_image: anime.bannerImage ?? null,
         description: anime.description ?? null,
         format: anime.format ?? null,
@@ -189,33 +190,75 @@ export function buildAnimeCachePayload(anime: SeasonalAnimeEntry, context: Seaso
 export function buildCharacterPayloads(anime: SeasonalAnimeEntry) {
     if (!anime.characters?.nodes) return [];
 
-    // Curate: Sort by favourites descending and take top 2 to avoid clutter
-    const topCharacters = [...anime.characters.nodes]
-        .sort((a, b) => (b.favourites ?? 0) - (a.favourites ?? 0))
-        .slice(0, 2);
-
     const now = new Date().toISOString();
-    return topCharacters
-        .filter(char => char.gender === 'Female' || char.gender === 'Male') // Exclude NULL/Other
-        .map((char) => {
-            // Determine role/gender label
-            const role = char.gender === 'Female' ? 'Waifu' : 'Husbando';
+    
+    // 1. First, parse and filter all eligible characters for this anime
+    const eligibleCharacters = anime.characters.nodes
+        .filter(char => char.gender === 'Female' || char.gender === 'Male')
+        .map(char => {
+            let age: number | null = null;
+            const desc = char.description || "";
             
-            // Calculate Price: Base 1000 + (Favorites / 10) capped at 5000
-            const popularityBonus = Math.floor((char.favourites ?? 0) / 10);
-            const price = Math.min(5000, 1000 + popularityBonus);
+            // Priority 1: Use explicit age field from API if it's a number string
+            if (char.age && /^\d+$/.test(char.age)) {
+                age = parseInt(char.age);
+            }
+            
+            // Priority 2: Stricter age parsing from description: Look for "Age: X" or "X years old"
+            if (age === null) {
+                const ageMatch = desc.match(/Age:\s*(\d+)/i) || desc.match(/(\d+)\s*years?\s*old/i);
+                if (ageMatch) {
+                    age = parseInt(ageMatch[1]);
+                }
+            }
+
+            // TROPE EXCEPTION: If the API age is something like "1000+" or "Unknown", 
+            // but the description says "actually 1000", we should try to catch it.
+            if (age === null && char.age) {
+                const apiAgeMatch = char.age.match(/(\d+)/);
+                if (apiAgeMatch) {
+                    age = parseInt(apiAgeMatch[1]);
+                }
+            }
 
             return {
-                id: char.id,
-                anime_id: anime.id,
-                name: char.name.full,
-                image: char.image.large,
-                role: role,
-                gender: char.gender,
-                favorites: char.favourites ?? 0,
-                price: price,
-                about: char.description ?? null,
-                updated_at: now
+                ...char,
+                parsedAge: age
             };
-        });
+        })
+        .filter(char => 
+            char.parsedAge !== null && 
+            char.parsedAge >= 16
+        );
+
+    // 2. Enforce "Max 1 Waifu and Max 1 Husbando per anime"
+    // We sort by favorites to pick the best representative for each category.
+    const sorted = [...eligibleCharacters].sort((a, b) => (b.favourites ?? 0) - (a.favourites ?? 0));
+    
+    const topWaifu = sorted.find(c => c.gender === 'Female');
+    const topHusbando = sorted.find(c => c.gender === 'Male');
+    
+    const finalSelection = [];
+    if (topWaifu) finalSelection.push(topWaifu);
+    if (topHusbando) finalSelection.push(topHusbando);
+
+    return finalSelection.map((char) => {
+        const role = char.gender === 'Female' ? 'Waifu' : 'Husbando';
+        const popularityBonus = Math.floor((char.favourites ?? 0) / 10);
+        const price = Math.min(5000, 1000 + popularityBonus);
+
+        return {
+            id: char.id,
+            anime_id: anime.id,
+            name: char.name.full,
+            image: char.image.large,
+            role: role,
+            gender: char.gender,
+            favorites: char.favourites ?? 0,
+            price: price,
+            age: char.parsedAge,
+            about: char.description ?? null,
+            updated_at: now
+        };
+    });
 }

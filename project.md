@@ -1,109 +1,76 @@
-# 🏮 Kura Anime League (KAL) — Project Specification
+# Kura Anime League Roadmap
 
----
+## Vision & Philosophy
+Kura Anime League (KAL) is a seasonal fantasy anime platform for weebs, otakus, and hype seekers. Users draft seasonal anime shows, assemble waifu/husbando rosters, and compete through scores, polls, and community voting to earn KuraPoints (KP) and badges while keeping the experience free, social, and lightly gamified.
 
-## 1️⃣ Project Overview
+**Core beliefs**
+- Minimalist, elegant interfaces with Japanese-inspired flair.
+- High-resolution visual fidelity (AniList ExtraLarge covers).
+- Forward-looking dashboards (Upcoming Season focus).
+- Compliance and safety (16+ recruitment rules).
 
-**Kura Anime League (KAL)** is a **seasonal fantasy anime platform** designed for weebs, otakus, and anime enthusiasts. Users **draft anime shows, characters, waifu/husbando picks, etc** each season, compete in **popularity contests, community voting, and hype-based challenges**, and earn **KuraPoints (KP)** and badges.  
+## Theme & Palette
+- **Background:** Amoled Black (`#000000`)
+- **Primary text/UI:** Pure White (`#FFFFFF`)
+- **Accent:** Neon anime gradients (pink, blue, purple).
+- **Vibe:** Minimalist + elegant + anime-futuristic.
 
-**Core Philosophy:**  
-- Minimalist, elegant, and anime-Japanese inspired interface  
-- Long-term seasonal cycles: Winter, Spring, Summer, Fall  
-- Focused on **fun, social engagement, and community-driven hype**  
-- Fully **vibe-coder friendly**: free tools, no paid services, simple backend logic  
-- **MVP first**: core playable features, scalable, maintainable  
-- Optional **future monetization**: donate button, cosmetic upgrades, private leagues  
+## Core Features
+1. **User Authentication**
+   - Supabase Auth integration for secure sessions.
+2. **Draft / Team Selection**
+   - **Anime Drafting:** Pick five seasonal series within a 20,000 KP budget.
+   - **Character Recruitment:** Hire top-tier Waifus/Husbandos (16+ age requirement enforced).
+   - **Tactical Roles:** Captain (2×) and Vice-Captain (1.5×) multipliers.
+3. **Seasonal Dashboard**
+   - Dynamic rotation that shifts focus to the **Upcoming Season** as soon as drafting begins.
+   - High-fidelity carousel and trending lists using extraLarge AniList assets.
+4. **Hype Index & Market Pulse**
+   - **Hype Index:** Ticker-style market view with daily price swings and historical data.
+   - **Market Pulse:** A global mixed feed of active and upcoming shows to track momentum.
+   - **Laptop Optimization:** Compressed layouts and natural terminology for better UX.
+5. **Scoring & Predictions**
+   - Automated scoring engine driven by airing status, ratings, and community buzz.
+   - Prediction markets for wagering KP on outcomes.
 
----
+## Technical Architecture
+| Component | Tool / Implementation | Status |
+|-----------|-----------------------|--------|
+| **Frontend** | Next.js + TailwindCSS + Framer Motion | Optimized for Laptops |
+| **Database** | Supabase (Postgres) + UUID Seasons | Fully Implemented |
+| **API Sync** | AniList (GraphQL) + Kitsu + TMDB | Multi-source enrichment |
+| **Enrichment** | TMDB (Strict Anime Filter) | Prevent Live-Action Banners |
+| **Admin** | Lazy-Loading Supabase Admin Client | Proxy-based safety |
 
-## 2️⃣ Color Palette & Theme
+## Implementation Progress (Updated March 2026)
 
-- **Primary Background:** Amoled Black `#000000`  
-- **Primary Text / UI Elements:** Pure White `#FFFFFF`  
-- **Accent Color:** Neon/Anime-inspired (Pink, Blue, Purple, or similar)  
-  - Accent color dynamically **changes per page reload or page navigation**  
-  - Provides subtle energy while maintaining minimalist elegance  
-- **Vibe:** Minimalist + elegant + Japanese-inspired + anime-futuristic  
+### Phase 1 — Database & High-Res Core (DONE)
+- Transitioned to **UUID seasons** for robust relational logic.
+- Implemented **Identity Mapping** (AniList ↔ Kitsu ↔ MAL ↔ TMDB).
+- Enforced **High-Res Strategy** (ExtraLarge posters) across all modules.
 
----
+### Phase 2 — Character Recruitment Engine (DONE)
+- **Strict 16+ Rule:** Automated age extraction from AniList API and descriptions.
+- **Ambiguity Filter:** Characters without stated ages are excluded for safety.
+- **Uniqueness Rule:** Limited to one Waifu and one Husbando per anime series.
+- **Intel Modals:** Added comprehensive dossiers with auto-scrubbed bios.
 
-## 3️⃣ Core Features
+### Phase 3 — Seasonal Dashboard & UX (DONE)
+- **Automatic Rotation:** Homepage now pivots focus to the upcoming draft cycle.
+- **Laptop UX:** Redesigned Hype Index modals with header-posters and fixed heights.
+- **Terminology Polish:** Replaced "techy" lingo with "Show Details", "Price Ranges", etc.
 
-1. **User Authentication**  
-   - Signup / Login via email/password  
-   - Optional OAuth: Discord, MAL, AniList  
-   - Secure session management, free-tier friendly  
+### Phase 4 — Infrastructure & Reliability (DONE)
+- **TMDB Strict Filter:** Prevents K-Drama/Live-Action data from polluting the UI.
+- **Admin Client Proxy:** Allows dev scripts to load environment variables lazily.
+- **Scoring Engine Fallbacks:** Robust cross-API status checks (AniList → Kitsu → Cache).
 
-2. **Draft / Team Selection**  
-   - Users pick:  
-     - Seasonal anime shows (Max 5 picks)  
-     - Optional characters (main + waifu/husbando)  
-   - Budget system: 20,000 KP starting budget; prices fluctuate based on Hype Index  
-   - Draft locks at season start  
-   - **Tactical Roles:** Set one Captain (2x points) and one Vice-Captain (1.5x points)  
+### Phase 5 — Competition & Leagues (IN PROGRESS)
+- Private league invite codes.
+- Weekly Head-to-Head matchups.
+- Achievement system (Arc tracking).
 
-3. **Team / Profile Screen**  
-   - Display picks, cumulative KuraPoints (KP), badges  
-   - Profile customization: avatar, username, optional cosmetic items  
-
-4. **Leaderboard & Leagues**  
-   - Global leaderboard for all users  
-   - **Private Leagues:** Create/Join with invite codes, Head-to-Head (H2H) matchups  
-   - Weekly KuraPoints (KP) + cumulative season KP  
-
-5. **Voting / Hype Mechanics**  
-   - **Community Polls:** Admins manage weekly questions; users vote to drive engagement  
-   - **Hype Index:** Rolling stock market view of anime. Prices change based on trending rank and score  
-   - **Market Pulse:** Real-time visibility into price swings and trending shows  
-
-6. **Scoring & Predictions**  
-   - **Scoring Engine:** Automated weekly points based on airing status, trending, and ratings  
-   - **Prediction Markets:** Wager KP on upcoming events (e.g., "Will Hero Academia hit 8.5 score?")  
-   - **Transfer Window:** Swap picks weekly (2 free transfers, extra cost KP)  
-
-7. **Admin / Content Management (CMS)**
-   - **Season Control:** Automation engine to advance phases (Draft → Live → Ended)  
-   - **CMS Controls:** Update Hero Banner content and Site-wide Announcements (Neutral/Accent/Warning tones)  
-   - **Layout Toggles:** Live-toggle homepage modules (Trending, Market, Leaderboard, etc.)  
-   - **Observability:** Monitor API rate limits (AniList/Kitsu) and audit Admin Activity Logs  
-
----
-
-## 4️⃣ Technical Resilience & Logic
-
-*   **Multi-Source Fallback:** If AniList rate-limits the platform, the system automatically falls back to **Kitsu API** or the local **Anime Cache** to ensure scores are always calculated.
-*   **Rate Limit Logging:** Every external API request is tracked to monitor budget health.
-*   **Automation Chart:** Visual tracking of season progress (Week 1/12) in the admin dash.
-
----
-
-## 5️⃣ Technical Stack (Free / MVP Friendly)
-
-| Layer                 | Tool / Tech                           | Notes                                         |
-| --------------------- | ------------------------------------- | --------------------------------------------- |
-| Frontend              | Next.js + TailwindCSS + Framer Motion | Minimalist UI, responsive, free               |
-| Backend               | Next.js App Router (Serverless)       | Lightweight API endpoints for CRUD & scoring  |
-| Database              | Supabase (Postgres)                   | Users, teams, seasons, votes, badges, logs    |
-| Auth                  | Supabase Auth                         | Handles login/signup/sessions                 |
-| APIs                  | AniList (Primary), Kitsu (Fallback)   | Seasonal lists, ratings, characters, mapping  |
-| Hosting               | Vercel Free Tier                      | Frontend + backend serverless                 |
-
----
-
-## 6️⃣ Screens / Pages (Implemented)
-
-1. **Landing Page:** Hero banner, trending, playbook, market pulse  
-2. **Squad Page:** Lineup management, Captaincy, Transfer Window  
-3. **Leagues Page:** Private league creation, Browse public leagues, Join codes  
-4. **Hype Index:** Stock ticker view, Price history, Price trends  
-5. **Predictions Page:** KP wagering, active bets, settlement history  
-6. **Admin Dashboard:** CMS, Automation, Logs, User management, Polls  
-7. **Rankings:** Global leaderboard  
-
----
-
-## 7️⃣ Notes / Constraints
-
-*   Spring 2026 is the active/upcoming focus (Week 1: April 1-7; Week 4: April 22-30, 2026).
-*   Scoring logic is spoiler-free (status-based).
-*   Minimalist Japanese vibe maintained via Amoled Black and Neon Accents.
+## UX Standards
+- **Title Priority:** English Title > Romaji.
+- **Visual Ratios:** 3/2 for banners, 3/4 for posters, 4/5 for laptop-optimized cards.
+- **Scrubbing:** All character bios must be stripped of HTML, `__markdown__`, and technical metadata headers.

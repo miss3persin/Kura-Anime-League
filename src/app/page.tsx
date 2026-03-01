@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { SeasonPhaseBanner } from "@/components/ui/season-banner";
+import { Modal } from "@/components/ui/modal";
 
 interface Anime {
   id: number;
@@ -111,8 +112,11 @@ export default function Home() {
           .order('hype_change', { ascending: false });
 
         if (mainData) {
-          const withBanners = mainData.filter(a => a.banner_image || a.external_banner_url).slice(0, 10);
-          setCarouselAnime(withBanners.length > 2 ? withBanners : mainData.slice(0, 10));
+          // Filter for shows that actually have a banner. If none, we use posters.
+          const withBanners = mainData.filter(a => a.banner_image || a.external_banner_url);
+          // If we have at least 3 shows with banners, use the banner-only list for carousel
+          // Otherwise, use the top 10 shows regardless of banner status (fallback to posters)
+          setCarouselAnime(withBanners.length >= 3 ? withBanners.slice(0, 10) : mainData.slice(0, 10));
           setTrendingShows(mainData.slice(0, 12));
         }
         if (pulseData) {
@@ -204,7 +208,8 @@ export default function Home() {
   const prevSlide = () => setActiveIndex(prev => (prev - 1 + carouselAnime.length) % carouselAnime.length);
 
   const [topPerformers, setTopPerformers] = useState<{ rank: number; name: string; kp: string; avatar: string }[]>([]);
-  const [topCharacters, setTopCharacters] = useState<{ id: number; name: string; image: string; role: string; favorites: number }[]>([]);
+  const [topCharacters, setTopCharacters] = useState<{ id: number; name: string; image: string; role: string; favorites: number; about?: string; anime_title?: string; price: number; gender?: string }[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = useState<typeof topCharacters[0] | null>(null);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -236,27 +241,33 @@ export default function Home() {
         let targetSeasonId = null;
         if (res.ok) {
             const sInfo = await res.json();
-            targetSeasonId = sInfo.activeSeason?.id || sInfo.upcomingSeason?.id;
+            // Prioritize upcoming season for recruits
+            targetSeasonId = sInfo.upcomingSeason?.id || sInfo.activeSeason?.id;
         }
 
         if (targetSeasonId) {
           // Get anime for this season
           const { data: animeData } = await supabase
             .from('anime_cache')
-            .select('id')
+            .select('id, title_english, title_romaji')
             .eq('season_uuid', targetSeasonId);
           
           if (animeData && animeData.length > 0) {
             const animeIds = animeData.map(a => a.id);
-            const { data, error } = await supabase
+            const animeMap = Object.fromEntries(animeData.map(a => [a.id, a.title_english || a.title_romaji]));
+
+            const { data: charData, error: charError } = await supabase
               .from('character_cache')
               .select('*')
               .in('anime_id', animeIds)
               .order('favorites', { ascending: false })
               .limit(3);
-
-            if (!error && data && data.length > 0) {
-              setTopCharacters(data);
+            
+            if (!charError && charData && charData.length > 0) {
+              setTopCharacters(charData.map(c => ({
+                ...c,
+                anime_title: animeMap[c.anime_id] || "Seasonal Series"
+              })));
               return;
             }
           }
@@ -270,7 +281,7 @@ export default function Home() {
           .limit(3);
 
         if (!error && data) {
-          setTopCharacters(data);
+          setTopCharacters(data.map(c => ({ ...c, anime_title: "Featured Series" })));
         }
       } catch (err) {
         console.error("Failed to fetch top characters:", err);
@@ -685,17 +696,21 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {topCharacters.map((char) => (
-              <div key={char.id} className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col md:flex-row gap-8 items-center">
+              <div 
+                key={char.id} 
+                onClick={() => setSelectedCharacter(char)}
+                className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col md:flex-row gap-8 items-center cursor-pointer"
+              >
                 <div className="w-32 h-32 rounded-3xl overflow-hidden flex-shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
                   <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                 </div>
                 <div className="space-y-3 text-center md:text-left">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent">{char.role}</p>
-                    <h3 className="text-2xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)]">{char.name}</h3>
+                    <h3 className="text-2xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)] truncate w-full">{char.name}</h3>
                   </div>
-                  <p className="text-[var(--muted)] text-sm font-medium leading-relaxed uppercase tracking-wider text-[10px]">
-                    Recruited by thousands of managers this season with {char.favorites.toLocaleString()} favorites.
+                  <p className="text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider text-[10px]">
+                    Featured in <span className="text-accent">{char.anime_title}</span> with {char.favorites.toLocaleString()} favorites.
                   </p>
                 </div>
               </div>
@@ -704,6 +719,64 @@ export default function Home() {
         </div>
 
       </div>
+
+      <Modal 
+        isOpen={!!selectedCharacter} 
+        onClose={() => setSelectedCharacter(null)} 
+        title={selectedCharacter?.name || ""}
+        maxWidth="max-w-3xl"
+      >
+        <div className="flex flex-col md:flex-row gap-10 items-start p-2">
+          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl flex-shrink-0 bg-[var(--surface-hover)]">
+            <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
+          </div>
+          <div className="flex-grow space-y-6">
+            <div className="flex flex-wrap gap-2">
+              <span className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.role}</span>
+              <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.favorites.toLocaleString()} Faves</span>
+              <span className="bg-white/5 text-[var(--muted)] border border-white/10 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.gender || 'Unknown'}</span>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Anime Series</p>
+              <p className="text-sm font-black text-white uppercase italic tracking-tight">{selectedCharacter?.anime_title}</p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Character Intel</p>
+              <div className="text-[11px] leading-relaxed text-[var(--muted)] font-medium max-h-48 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-accent/20">
+                {selectedCharacter?.about 
+                  ? selectedCharacter.about
+                      .replace(/<[^>]*>/g, '') // Remove HTML
+                      .replace(/__(.+?)__/g, '$1') // Bold __text__
+                      .replace(/~~(.+?)~~/g, '$1') // Strikethrough ~~text~~
+                      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold **text**
+                      .replace(/\*(.+?)\*/g, '$1') // Italic *text*
+                      .replace(/_(.+?)_/g, '$1') // Italic _text_
+                      .replace(/\|\|(.+?)\|\|/g, '[SPOILER]') // Spoilers
+                      .replace(/!\[.*?\]\(.*?\)/g, '') // Remove markdown images
+                      .replace(/\[.*?\]\(.*?\)/g, '$1') // Remove markdown links but keep text
+                      .replace(/(?:Height|Age|Weight|Blood Type|Birth|Gender):.*?\n/gi, '') // Remove metadata lines
+                      .replace(/\n\s*\n/g, '\n') // Multiple newlines
+                      .trim()
+                      .slice(0, 1000) + (selectedCharacter.about.length > 1000 ? "..." : "")
+                  : "Tactical data for this recruit is currently being processed by league scouts."
+                }
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+              <div>
+                <p className="text-[8px] font-black uppercase text-[var(--muted)] mb-1">Market Value</p>
+                <p className="text-xl font-black text-white italic tracking-tighter">{selectedCharacter?.price.toLocaleString()} KP</p>
+              </div>
+              <div className="flex items-end justify-end">
+                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Dossier</NeonButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </AppShell>
   );
 }

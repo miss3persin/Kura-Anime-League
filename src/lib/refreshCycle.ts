@@ -91,7 +91,11 @@ export async function runRefreshCycle(initiatedBy?: string): Promise<RefreshCycl
         const query = anime.title?.english || anime.title?.romaji;
         if (query) {
           const tmdbResult = await searchTmdbSeries(query);
-          if (tmdbResult?.backdrop_path) {
+          // Strict filtering: must be an Animation (16) and preferably Japanese
+          const isAnime = tmdbResult?.genre_ids?.includes(16);
+          const isJapanese = tmdbResult?.original_language === 'ja';
+
+          if (tmdbResult?.backdrop_path && (isAnime || isJapanese)) {
             const bannerUrl = getTmdbImageUrl(tmdbResult.backdrop_path, 'original');
             await supabaseAdmin.from('anime_cache')
               .update({ external_banner_url: bannerUrl })

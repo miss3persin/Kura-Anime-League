@@ -9,6 +9,8 @@ export interface IdentityMap {
   kitsu_id: number | null;
   mal_id: number | null;
   tmdb_id?: number | null;
+  title?: string | null;
+  metadata?: any;
   updated_at: string;
 }
 
@@ -17,10 +19,23 @@ export async function findIdentityMapping(anilistId: number): Promise<IdentityMa
     .from('anime_identity_map')
     .select('*')
     .eq('anilist_id', anilistId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
   return data as IdentityMap;
+}
+
+export async function findMappingsForIds(anilistIds: number[]): Promise<Record<number, IdentityMap>> {
+  if (!anilistIds.length) return {};
+  
+  const { data, error } = await supabaseAdmin
+    .from('anime_identity_map')
+    .select('*')
+    .in('anilist_id', anilistIds);
+
+  if (error || !data) return {};
+  
+  return Object.fromEntries(data.map(m => [m.anilist_id, m as IdentityMap]));
 }
 
 export async function upsertIdentityMapping(mapping: Partial<IdentityMap>) {

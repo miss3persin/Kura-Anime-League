@@ -69,113 +69,108 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10">
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative z-10 mx-auto w-full max-w-4xl rounded-3xl border border-white/20 bg-[var(--surface)] p-8 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="flex items-start justify-between gap-6 mb-8">
-                    <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.4em] text-accent font-black mb-2">Market Insights</p>
-                        <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-[var(--foreground)] italic leading-tight truncate">
-                            {anime.title_english || anime.title_romaji}
-                        </h3>
-                        <div className="flex items-center gap-3 mt-2">
-                            <span className="text-[11px] uppercase tracking-[0.3em] text-[var(--muted)] font-bold">{anime.title_english ? anime.title_romaji : 'Universal Identification'}</span>
-                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${anime.status === 'RELEASING' ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'bg-[var(--surface-hover)] border-[var(--border)] text-[var(--muted)]'}`}>
-                                {anime.status || 'FINISHED'}
-                            </span>
+            <div className="relative z-10 mx-auto w-full max-w-4xl rounded-3xl border border-white/20 bg-[var(--surface)] p-8 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                <div className="flex items-start justify-between gap-6 mb-6">
+                    <div className="flex gap-6 items-center min-w-0">
+                        <div className="relative w-24 h-[100px] flex-shrink-0 overflow-hidden rounded-2xl border-2 border-black shadow-lg">
+                            <img 
+                                src={anime.cover_image} 
+                                alt={anime.title_english || anime.title_romaji} 
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.4em] text-accent font-black mb-1">Show Details</p>
+                            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-[var(--foreground)] italic leading-tight truncate pr-4">
+                                {anime.title_english || anime.title_romaji}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-1">
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] font-bold truncate max-w-[200px]">{anime.title_english ? anime.title_romaji : 'Seasonal Series'}</span>
+                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${anime.status === 'RELEASING' ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'bg-[var(--surface-hover)] border-[var(--border)] text-[var(--muted)]'}`}>
+                                    {anime.status || 'FINISHED'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex-shrink-0 rounded-2xl border border-white/10 bg-white/5 p-4 text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)] transition hover:border-accent hover:text-white hover:bg-accent/10"
+                        className="flex-shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] transition hover:border-accent hover:text-white hover:bg-accent/10"
                     >
                         Dismiss
                     </button>
                 </div>
 
-                <div className="grid gap-10 sm:grid-cols-[280px,1fr] overflow-y-auto pr-2 custom-scrollbar">
-                    <div className="space-y-6">
-                        <div className="relative aspect-[3/4.2] overflow-hidden rounded-[2rem] border-4 border-black shadow-2xl">
-                            <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="h-full w-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                        </div>
-                        
-                        <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-5 space-y-4">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)] border-b border-[var(--border)] pb-2">Quick Stats</p>
-                            <div className="flex flex-col gap-3">
+                <div className="grid gap-8 sm:grid-cols-[200px,1fr] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-4">
+                        <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)] border-b border-[var(--border)] pb-2">Series Stats</p>
+                            <div className="flex flex-col gap-2.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Hype</span>
-                                    <span className="text-sm font-black text-accent italic">{anime.hype_score}</span>
+                                    <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest">Hype</span>
+                                    <span className="text-xs font-black text-accent italic">{anime.hype_score}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Price</span>
-                                    <span className="text-sm font-black text-white italic">{anime.cost_kp?.toLocaleString()} KP</span>
+                                    <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest">Cost</span>
+                                    <span className="text-xs font-black text-white italic">{anime.cost_kp?.toLocaleString()} KP</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Score</span>
-                                    <span className="text-sm font-black text-yellow-500 italic">{anime.average_score || '??'}%</span>
+                                    <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest">Rating</span>
+                                    <span className="text-xs font-black text-yellow-500 italic">{anime.average_score || '??'}%</span>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl border border-accent/20 bg-accent/5">
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white mb-2">Analysis</p>
+                            <p className="text-[10px] text-[var(--muted)] leading-relaxed font-medium">
+                                Show values update daily based on community activity.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="space-y-8 pb-10">
-                        <div className="space-y-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Strategic Briefing</p>
-                            <div className="text-[13px] text-[var(--muted)] leading-relaxed font-medium line-clamp-6 hover:line-clamp-none transition-all duration-500 cursor-default bg-white/[0.02] p-6 rounded-3xl border border-white/5">
-                                {(anime as any).description?.replace(/<[^>]*>/g, '') || "No operational intelligence available for this asset. Market projections are based on community momentum and historical trending data."}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">About the Series</p>
+                            <div className="text-[12px] text-[var(--muted)] leading-relaxed font-medium bg-white/[0.02] p-5 rounded-2xl border border-white/5">
+                                {(anime as any).description?.replace(/<[^>]*>/g, '') || "No synopsis available."}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex flex-col gap-4 rounded-3xl border border-[var(--border)] bg-[var(--background)] p-6 text-[11px] uppercase tracking-[0.3em] text-[var(--muted)]">
-                                <p className="text-[10px] font-black text-white mb-2 border-b border-white/5 pb-2">Market Volatility</p>
-                                <div className="flex justify-between items-center py-1">
-                                    <span>High Price</span>
-                                    <span className="font-black text-white text-sm">{historyInsights.high?.toLocaleString() ?? latest.price} KP</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                                <p className="font-black text-white border-b border-white/5 pb-2">Price Ranges</p>
+                                <div className="flex justify-between items-center">
+                                    <span>High Point</span>
+                                    <span className="font-black text-white">{historyInsights.high?.toLocaleString() ?? latest.price} KP</span>
                                 </div>
-                                <div className="flex justify-between items-center py-1">
-                                    <span>Low Price</span>
-                                    <span className="font-black text-white text-sm">{historyInsights.low?.toLocaleString() ?? latest.price} KP</span>
+                                <div className="flex justify-between items-center">
+                                    <span>Low Point</span>
+                                    <span className="font-black text-white">{historyInsights.low?.toLocaleString() ?? latest.price} KP</span>
                                 </div>
-                                <div className="flex justify-between items-center py-1 border-t border-white/5 mt-2 pt-2">
+                                <div className="flex justify-between items-center border-t border-white/5 pt-2">
                                     <span>Avg Value</span>
-                                    <span className="font-black text-accent text-sm">{historyInsights.avg?.toLocaleString() ?? latest.price} KP</span>
-                                </div>
-                                <div className="flex justify-between items-center py-1">
-                                    <span>Volatility</span>
-                                    <span className="font-black text-pink-500 text-sm">{historyInsights.volatility ?? 0} σ</span>
+                                    <span className="font-black text-accent">{historyInsights.avg?.toLocaleString() ?? latest.price} KP</span>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-4 rounded-3xl border border-[var(--border)] bg-[var(--background)] p-6 text-[11px] uppercase tracking-[0.3em] text-[var(--muted)]">
-                                <p className="text-[10px] font-black text-white mb-2 border-b border-white/5 pb-2">Historical Tape</p>
-                                <div className="space-y-3">
+                            <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                                <p className="font-black text-white border-b border-white/5 pb-2">Price History</p>
+                                <div className="space-y-2">
                                     {previewData.length ? (
                                         previewData.map((entry, index) => {
                                             const item = formatHistoryEntry(entry);
                                             return (
                                                 <div key={`${anime.id}-hist-${index}`} className="flex items-center justify-between text-white/80">
-                                                    <span className="text-[9px]">{item.label.split(',')[0]}</span>
-                                                    <span className="font-black text-[12px] italic">{item.price} KP</span>
+                                                    <span>{item.label.split(',')[0]}</span>
+                                                    <span className="font-black italic">{item.price} KP</span>
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <div className="h-full flex items-center justify-center py-4">
-                                            <p className="text-[9px] text-[var(--muted)] italic text-center">Initial offering period active.<br/>No historical data points yet.</p>
-                                        </div>
+                                        <p className="text-[9px] text-[var(--muted)] italic">No history yet.</p>
                                     )}
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="p-6 rounded-3xl border border-accent/20 bg-accent/5">
-                            <div className="flex items-center gap-3 mb-4">
-                                <Activity size={16} className="text-accent" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white">System Projections</p>
-                            </div>
-                            <p className="text-xs text-[var(--muted)] leading-relaxed font-medium">
-                                This asset is currently undergoing real-time sentiment analysis. Prices fluctuate based on global trending volume, AniList score updates, and weekly episodic "Hype Spikes." Managers are advised to monitor volatility metrics before committing significant KuraPoints.
-                            </p>
                         </div>
                     </div>
                 </div>

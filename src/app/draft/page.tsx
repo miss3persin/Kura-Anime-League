@@ -29,7 +29,6 @@ interface Anime {
   genres?: string[];
   is_eligible: boolean;
 }
-
 interface Character {
   id: number;
   name: string;
@@ -40,6 +39,8 @@ interface Character {
   price: number;
   favorites: number;
   about?: string;
+  age?: number;
+  anime_title?: string;
 }
 
 interface DraftUser {
@@ -163,18 +164,24 @@ export default function DraftPage() {
   );
 
   const fetchCharacters = useCallback(async (animeIds?: number[]) => {
+    // 1. Base query with gender filter
     let query = supabase
       .from('character_cache')
       .select('*')
       .in('gender', ['Male', 'Female']);
 
+    // 2. Strict Age Filter: Only 16+ is eligible. Unknown ages are discarded.
+    query = query.gte('age', 16);
+
+    // 3. Seasonal Filter: Must be from a current seasonal series
     if (animeIds && animeIds.length > 0) {
       query = query.in('anime_id', animeIds);
     }
 
+    // 4. Limit to 25 top recruits to avoid overwhelming users
     const { data } = await query
       .order('favorites', { ascending: false })
-      .limit(50);
+      .limit(25);
     return (data as Character[]) ?? [];
   }, []);
 
@@ -203,11 +210,15 @@ export default function DraftPage() {
         ]);
 
         const animeIds = animeForSeason.map(a => a.id);
+        const animeMap = Object.fromEntries(animeForSeason.map(a => [a.id, a.title_english || a.title_romaji]));
         const characters = await fetchCharacters(animeIds).catch((e) => { console.error("Character fetch error:", e); return []; });
 
         setAnimeList(animeForSeason);
         setPreviewAnime(upcomingAnime.slice(0, 8));
-        setCharacterList(characters);
+        setCharacterList(characters.map(c => ({
+          ...c,
+          anime_title: animeMap[c.anime_id] || "Seasonal Series"
+        })));
       } catch (error) {
         console.error("Failed to refresh season data", error);
       } finally {
@@ -634,23 +645,28 @@ export default function DraftPage() {
             </div>
             
             <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Anime Series</p>
+              <p className="text-sm font-black text-white uppercase italic tracking-tight">{selectedCharacter?.anime_title}</p>
+            </div>
+
+            <div className="space-y-2">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Character Bio</p>
               <div className="text-xs leading-relaxed text-[var(--muted)] font-medium max-h-48 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-accent/20">
                 {selectedCharacter?.about 
                   ? selectedCharacter.about
                       .replace(/<[^>]*>/g, '') // Remove HTML
-                      .replace(/__(.+?)__/g, '$1') // Bold __text__ -> text
-                      .replace(/~(.+?)~/g, '$1') // Italic ~text~ -> text
-                      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold **text** -> text
-                      .replace(/\*(.+?)\*/g, '$1') // Italic *text* -> text
+                      .replace(/__(.+?)__/g, '$1') // Bold __text__
+                      .replace(/~~(.+?)~~/g, '$1') // Strikethrough ~~text~~
+                      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold **text**
+                      .replace(/\*(.+?)\*/g, '$1') // Italic *text*
+                      .replace(/_(.+?)_/g, '$1') // Italic _text_
+                      .replace(/\|\|(.+?)\|\|/g, '[SPOILER]') // Spoilers
                       .replace(/!\[.*?\]\(.*?\)/g, '') // Remove markdown images
                       .replace(/\[.*?\]\(.*?\)/g, '$1') // Remove markdown links but keep text
-                      .replace(/Height:.*?\n/gi, '') // Remove Height info
-                      .replace(/Age:.*?\n/gi, '') // Remove Age info
-                      .replace(/Weight:.*?\n/gi, '') // Remove Weight info
-                      .replace(/Blood Type:.*?\n/gi, '') // Remove Blood info
+                      .replace(/(?:Height|Age|Weight|Blood Type|Birth|Gender):.*?\n/gi, '') // Remove metadata lines
+                      .replace(/\n\s*\n/g, '\n') // Multiple newlines
                       .trim()
-                      .slice(0, 800) + (selectedCharacter.about.length > 800 ? "..." : "")
+                      .slice(0, 1000) + (selectedCharacter.about.length > 1000 ? "..." : "")
                   : "No detailed bio available for this character. They are currently part of the seasonal lineup."
                 }
               </div>

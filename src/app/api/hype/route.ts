@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
 import { fetchAniList } from '@/lib/anilist';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { calcCostKp } from '@/lib/hype';
 import { requireServiceSecret } from '@/lib/service-auth';
-
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const CACHE_HEADERS = { 'Cache-Control': 'no-store, no-cache, max-age=0' };
 export const dynamic = 'force-dynamic';

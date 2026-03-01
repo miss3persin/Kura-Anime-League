@@ -18,6 +18,7 @@ export interface AniListCharacter {
     large: string;
   };
   gender?: string;
+  age?: string;
   favourites?: number;
   description?: string;
 }
@@ -110,6 +111,7 @@ query ($season: MediaSeason, $seasonYear: Int, $page: Int, $perPage: Int) {
             large
           }
           gender
+          age
           favourites
           description
         }
