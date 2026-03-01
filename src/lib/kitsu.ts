@@ -153,10 +153,32 @@ function mapKitsuStatus(status: string): KitsuAnimeResult['status'] {
 }
 
 function mapKitsuAnime(id: string, attributes: Record<string, unknown>): KitsuAnimeResult {
-  const averageRating = attributes.averageRating ? parseFloat(attributes.averageRating) : undefined;
-  const popularity = attributes.userCount;
-  const nextRelease = attributes.nextRelease;
-  const status = mapKitsuStatus(attributes.status);
+  const averageRatingValue = attributes.averageRating;
+  const averageRating =
+    typeof averageRatingValue === 'string'
+      ? parseFloat(averageRatingValue)
+      : typeof averageRatingValue === 'number'
+        ? averageRatingValue
+        : undefined;
+
+  const userCountValue = attributes.userCount;
+  const popularity =
+    typeof userCountValue === 'number'
+      ? userCountValue
+      : typeof userCountValue === 'string'
+        ? Number(userCountValue)
+        : undefined;
+
+  const nextReleaseValue = attributes.nextRelease;
+  const nextRelease =
+    typeof nextReleaseValue === 'string'
+      ? nextReleaseValue
+      : typeof nextReleaseValue === 'number'
+        ? nextReleaseValue.toString()
+        : undefined;
+
+  const statusValue = typeof attributes.status === 'string' ? attributes.status : '';
+  const status = mapKitsuStatus(statusValue);
 
   return {
     id,

@@ -1,7 +1,8 @@
 import { AniListRateLimitError, fetchAniList } from '@/lib/anilist';
 import { logApiRateLimit } from '@/lib/apiRateLimit';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { fetchKitsuAnimeById, normalizeKitsuStatus, searchKitsuAnime } from '@/lib/kitsu';
+import { fetchKitsuAnimeById, searchKitsuAnime } from '@/lib/kitsu';
+import type { KitsuAnimeResult } from '@/lib/kitsu';
 import { findMappingsForIds, upsertIdentityMapping } from '@/lib/identityMapping';
 import { fetchMalAnimeById, normalizeJikanStatus, searchMalAnime, JikanAnimeResult } from '@/lib/jikan';
 
@@ -23,16 +24,6 @@ export interface AiringStatus {
   averageScore?: number | null;
   popularity?: number | null;
   source: 'AniList' | 'Kitsu' | 'Jikan' | 'Cache' | 'LiveChart';
-}
-
-interface KitsuAnimePayload {
-  id: string;
-  attributes: {
-    status: string;
-    averageRating: string | null;
-    userCount: number;
-    canonicalTitle: string;
-  };
 }
 
 interface AniListAiringMedia {
@@ -134,7 +125,7 @@ async function fetchFallbackStatuses(ids: number[]): Promise<Record<number, Airi
 
   const mappingMap = await findMappingsForIds(rows.map((row) => row.id));
 
-  const kitsuCache = new Map<number, KitsuAnimePayload>();
+  const kitsuCache = new Map<number, KitsuAnimeResult>();
   const jikanCache = new Map<number, JikanAnimeResult>();
 
   for (const row of rows) {
@@ -149,15 +140,15 @@ async function fetchFallbackStatuses(ids: number[]): Promise<Record<number, Airi
     if (withKitsu.kitsu_id) {
       let kitsuPayload = kitsuCache.get(withKitsu.kitsu_id);
       if (!kitsuPayload) {
-        kitsuPayload = (await fetchKitsuAnimeById(withKitsu.kitsu_id).catch(() => null)) as KitsuAnimePayload;
-        if (kitsuPayload) kitsuCache.set(withKitsu.kitsu_id, kitsuPayload);
+        const fetched = await fetchKitsuAnimeById(withKitsu.kitsu_id.toString()).catch(() => null);
+        if (fetched) {
+          kitsuCache.set(withKitsu.kitsu_id, fetched);
+          kitsuPayload = fetched;
+        }
       }
       if (kitsuPayload) {
-        const normalized = normalizeKitsuStatus(kitsuPayload, row.id);
-        if (normalized) {
-          statuses[row.id] = normalized;
-          continue;
-        }
+        statuses[row.id] = buildKitsuStatus(row.id, kitsuPayload);
+        continue;
       }
     }
 
@@ -166,13 +157,16 @@ async function fetchFallbackStatuses(ids: number[]): Promise<Record<number, Airi
     if (withMal.mal_id) {
       let jikanPayload = jikanCache.get(withMal.mal_id);
       if (!jikanPayload) {
-        jikanPayload = await fetchMalAnimeById(withMal.mal_id).catch(() => null);
-        if (jikanPayload) jikanCache.set(withMal.mal_id, jikanPayload);
+        const fetched = await fetchMalAnimeById(withMal.mal_id).catch(() => null);
+        if (fetched) {
+          jikanCache.set(withMal.mal_id, fetched);
+          jikanPayload = fetched;
+        }
       }
-      if (jikanPayload) {
-        statuses[row.id] = normalizeJikanStatus(jikanPayload, row.id);
-        continue;
-      }
+    if (jikanPayload) {
+      statuses[row.id] = buildJikanStatus(row.id, jikanPayload);
+      continue;
+    }
     }
 
     statuses[row.id] = cacheStatus;
@@ -219,6 +213,33 @@ function buildCacheStatus(row: AnimeCacheRow): AiringStatus {
   };
 }
 
+function buildKitsuStatus(rowId: number, payload: KitsuAnimeResult): AiringStatus {
+  const nextAiringSeconds = payload.nextAiringEpisode?.airingAt
+    ? Number(payload.nextAiringEpisode.airingAt)
+    : undefined;
+
+  return {
+    id: rowId,
+    status: payload.status,
+    nextAiringEpisode: nextAiringSeconds ? { airingAt: nextAiringSeconds } : undefined,
+    trending: payload.trending ?? 0,
+    averageScore: payload.averageScore ?? null,
+    popularity: payload.popularity ?? null,
+    source: 'Kitsu'
+  };
+}
+
+function buildJikanStatus(rowId: number, payload: JikanAnimeResult): AiringStatus {
+  return {
+    id: rowId,
+    status: normalizeJikanStatus(payload.status ?? ''),
+    averageScore: payload.score ?? null,
+    trending: 0,
+    popularity: payload.members ?? null,
+    source: 'Jikan'
+  };
+}
+
 async function ensureKitsuId(row: AnimeCacheRow): Promise<AnimeCacheRow> {
   if (row.kitsu_id) return row;
   const query = row.title_romaji || row.title_english;
@@ -232,11 +253,11 @@ async function ensureKitsuId(row: AnimeCacheRow): Promise<AnimeCacheRow> {
         .from('anime_cache')
         .update({ kitsu_id: kitsuId })
         .eq('id', row.id);
-      await upsertIdentityMapping({
-        anilist_id: row.id,
-        kitsu_id: kitsuId,
-        title: row.title_romaji ?? row.title_english ?? result.attributes?.canonicalTitle ?? null
-      });
+        await upsertIdentityMapping({
+          anilist_id: row.id,
+          kitsu_id: kitsuId,
+          title: row.title_romaji ?? row.title_english ?? null
+        });
       row.kitsu_id = kitsuId;
     }
   }

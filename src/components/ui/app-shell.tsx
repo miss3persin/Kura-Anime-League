@@ -6,7 +6,7 @@ import {
     Shield, Activity, Dice6, ShieldCheck
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -60,7 +60,7 @@ const ACCENTS = ['#AE00FF', '#00FF9C', '#FF2E63', '#FFD700', '#FF4D00'];
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [accentColor, setAccentColor] = useState('#AE00FF');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<SupabaseUser | null>(null);
     const [profile, setProfile] = useState<ProfileState>(null);
     const [seasonInfo, setSeasonInfo] = useState<SeasonInfo>(null);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -266,7 +266,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                         alt="Avatar"
                                     />
                                     <div className="overflow-hidden">
-                                        <p className="text-[10px] font-black uppercase text-[var(--foreground)] truncate">{profile?.username || user.user_metadata.username || user.email.split('@')[0]}</p>
+                                        <p className="text-[10px] font-black uppercase text-[var(--foreground)] truncate">{profile?.username || user.user_metadata.username || user.email?.split('@')[0]}</p>
                                         <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">League Member</p>
                                     </div>
                                 </div>

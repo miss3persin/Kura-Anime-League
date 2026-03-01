@@ -9,7 +9,7 @@ export async function recordLiveChartStatuses(statuses: Record<number, AiringSta
   const rows = Object.values(statuses).map((status) => ({
     anime_id: status.id,
     status: status.status,
-    next_airing_at: status.nextAiringEpisode
+    next_airing_at: status.nextAiringEpisode?.airingAt
       ? new Date(status.nextAiringEpisode.airingAt * 1000).toISOString()
       : null,
     source: status.source,

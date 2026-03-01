@@ -1,15 +1,17 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { fetchAiringStatuses } from '@/lib/animeSources';
 import { buildAnimeCachePayload, buildCharacterPayloads, determineSeasonContexts, fetchSeasonalAnimeList, SeasonalAnimeEntry } from '@/lib/sync';
+import type { SeasonContext } from '@/lib/sync';
 import { ensureIdentityMappingForAnime } from '@/lib/identityMapping';
 import { recordLiveChartStatuses } from '@/lib/livechart';
+import type { LiveChartWriteResult } from '@/lib/livechart';
 import { getTmdbImageUrl, searchTmdbSeries } from '@/lib/tmdb';
 
 const JOB_NAME = 'anime_cache_refresh';
 
 interface RefreshStep {
   step: string;
-  result: Record<string, unknown>;
+  result: Record<string, unknown> | LiveChartWriteResult;
 }
 
 export interface RefreshCycleResult {
@@ -45,12 +47,12 @@ export async function runRefreshCycle(initiatedBy?: string): Promise<RefreshCycl
       throw new Error('No active or upcoming seasons found to sync.');
     }
 
-    const allSeasonalAnime: { anime: SeasonalAnimeEntry; context: Record<string, unknown> }[] = [];
+    const allSeasonalAnime: { anime: SeasonalAnimeEntry; context: SeasonContext }[] = [];
 
     for (const ctx of contexts) {
       const list = await fetchSeasonalAnimeList(ctx);
       for (const item of list) {
-        allSeasonalAnime.push({ anime: item, context: ctx as unknown as Record<string, unknown> });
+        allSeasonalAnime.push({ anime: item, context: ctx });
       }
 
       steps.push({

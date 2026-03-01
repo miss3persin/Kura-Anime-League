@@ -11,6 +11,7 @@ export interface JikanAnimeResult {
   members?: number;
   favorites?: number;
   score?: number;
+  status?: string;
 }
 
 export async function fetchMalAnime(query: string): Promise<JikanAnimeResult | null> {
@@ -62,7 +63,8 @@ export async function fetchMalAnime(query: string): Promise<JikanAnimeResult | n
         episodes: entry.episodes,
         members: entry.members,
         favorites: entry.favorites,
-        score: entry.score
+        score: entry.score,
+        status: entry.status
       };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));

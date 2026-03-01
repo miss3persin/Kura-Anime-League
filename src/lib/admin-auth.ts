@@ -16,7 +16,7 @@ const sanitizeUser = (user: User) => ({
   id: user.id,
   email: user.email,
   phone: user.phone,
-  email_confirmed: user.email_confirmed,
+  email_confirmed_at: user.email_confirmed_at,
   user_metadata: user.user_metadata ?? null
 });
 

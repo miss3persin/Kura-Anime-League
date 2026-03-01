@@ -17,6 +17,7 @@ interface Anime {
   title_english: string;
   cover_image: string;
   banner_image: string;
+  external_banner_url?: string | null;
   description: string;
   cost_kp: number;
   hype_change: number;
@@ -39,6 +40,8 @@ const DEFAULT_DISPLAY_CONFIG: DisplayConfig = {
   disableWelcomeModal: false
 };
 
+type AnnouncementTone = NonNullable<AnnouncementContent["tone"]>;
+
 const DEFAULT_ANNOUNCEMENT: AnnouncementContent = {
   visible: false,
   message: "",
@@ -47,7 +50,7 @@ const DEFAULT_ANNOUNCEMENT: AnnouncementContent = {
   tone: "default"
 };
 
-const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementContent["tone"], string> = {
+const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementTone, string> = {
   default: "border-white/10 bg-white/5 text-white/80",
   accent: "border-sky-500/40 bg-sky-500/10 text-sky-100",
   warning: "border-red-500/40 bg-red-500/10 text-red-100"

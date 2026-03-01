@@ -18,7 +18,7 @@ export async function logApiRateLimit(record: ApiRateLimitRecord) {
   try {
     await supabaseAdmin
       .from('api_rate_limit_logs')
-      .insert(record, { returning: 'minimal' });
+      .insert(record);
   } catch (error) {
     // Avoid failing the requesting flow if logging fails.
     console.warn('Rate limit log failed', error);
