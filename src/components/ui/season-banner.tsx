@@ -31,7 +31,7 @@ const PHASE_CONFIG: Record<string, {
         border: 'rgba(0,255,156,0.2)',
         icon: Zap,
         badge: '🟢 DRAFT OPEN',
-        title: (s) => s.activeSeason?.name ?? 'Draft Open',
+        title: (s) => s.upcomingSeason?.name ?? s.activeSeason?.name ?? 'Draft Open',
         subtitle: () => 'Build your team before the deadline — pick your 5 shows now!',
     },
     season_live: {
@@ -40,7 +40,7 @@ const PHASE_CONFIG: Record<string, {
         border: 'rgba(174,0,255,0.2)',
         icon: Zap,
         badge: '🟣 SEASON LIVE',
-        title: (s) => `${s.activeSeason?.name ?? 'Season'} — Week ${s.currentWeek}/${s.totalWeeks}`,
+        title: (s) => `${s.upcomingSeason?.name ?? s.activeSeason?.name ?? 'Season'} — Week ${s.currentWeek}/${s.totalWeeks}`,
         subtitle: () => 'Scores update every Friday. Track your picks on the Hype Index.',
     },
     transfer_review: {
@@ -49,7 +49,7 @@ const PHASE_CONFIG: Record<string, {
         border: 'rgba(255,215,0,0.2)',
         icon: RefreshCw,
         badge: '🟡 TRANSFER REVIEW',
-        title: (s) => `${s.activeSeason?.name ?? 'Season'} Ended`,
+        title: (s) => `${s.upcomingSeason?.name ?? s.activeSeason?.name ?? 'Season'} Ended`,
         subtitle: () => 'Decide which picks carry over. The new season draft opens soon.',
     },
     pre_draft: {

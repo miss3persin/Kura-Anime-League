@@ -74,6 +74,7 @@ export interface SeasonalAnimeEntry {
     coverImage: {
         extraLarge?: string | null;
         large?: string | null;
+        medium?: string | null;
     };
     bannerImage?: string | null;
     description?: string | null;
@@ -82,41 +83,40 @@ export interface SeasonalAnimeEntry {
     averageScore?: number | null;
     genres?: string[] | null;
     status?: string | null;
+    isAdult?: boolean | null;
+    popularity?: number | null;
     characters?: {
         nodes?: AniListCharacter[];
     };
 }
 
-export async function determineSeasonContext(): Promise<SeasonContext> {
-    const { data: rawCurrentSeason } = await supabaseAdmin
+export async function determineSeasonContexts(): Promise<SeasonContext[]> {
+    const { data: seasons } = await supabaseAdmin
         .from('seasons')
         .select('*')
-        .eq('status', 'active')
-        .single();
+        .in('status', ['active', 'upcoming'])
+        .order('status', { ascending: true }); // 'active' comes before 'upcoming' lexicographically but let's be careful.
 
-    const { data: rawUpcomingSeason } = await supabaseAdmin
-        .from('seasons')
-        .select('*')
-        .eq('status', 'upcoming')
-        .order('draft_opens_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+    if (!seasons || seasons.length === 0) {
+        return [];
+    }
 
-    const targetSeason = (rawCurrentSeason ?? rawUpcomingSeason) as SeasonRecord | null;
-    const derivedLabel =
-        extractSeasonLabelFromName(targetSeason?.name) ??
-        seasonLabelFromDate(targetSeason?.draft_opens_at ?? targetSeason?.start_date);
-    const seasonYear = extractSeasonYear(targetSeason);
-    const seasonName = targetSeason?.name ?? `${derivedLabel} ${seasonYear}`;
-    const seasonId = parseSeasonId(targetSeason?.id);
+    return (seasons as SeasonRecord[]).map((s) => {
+        const derivedLabel =
+            extractSeasonLabelFromName(s.name) ??
+            seasonLabelFromDate(s.draft_opens_at ?? s.start_date);
+        const seasonYear = extractSeasonYear(s);
+        const seasonName = s.name ?? `${derivedLabel} ${seasonYear}`;
+        const seasonId = parseSeasonId(s.id);
 
-    return {
-        label: derivedLabel,
-        year: seasonYear,
-        seasonName,
-        seasonId,
-        seasonRecord: targetSeason
-    };
+        return {
+            label: derivedLabel,
+            year: seasonYear,
+            seasonName,
+            seasonId,
+            seasonRecord: s
+        };
+    });
 }
 
 export async function fetchSeasonalAnimeList(context: SeasonContext, perPage = 50): Promise<SeasonalAnimeEntry[]> {
@@ -150,10 +150,21 @@ export async function fetchSeasonalAnimeList(context: SeasonContext, perPage = 5
 }
 
 export function buildAnimeCachePayload(anime: SeasonalAnimeEntry, context: SeasonContext) {
+    // League Eligibility Logic:
+    // 1. No Adult/Hentai (isAdult)
+    // 2. No ONAs (Often short/irregular)
+    // 3. High Popularity "Auto-Ban" for drafting (e.g. > 100k members) 
+    // This forces users to draft "undervalued" shows rather than just sequels.
+    const isAdult = anime.isAdult ?? false;
+    const isONA = anime.format === 'ONA';
+    const isOverHyped = (anime.popularity ?? 0) > 100000;
+    const isEligible = !isAdult && !isONA && !isOverHyped;
+
     return {
         id: anime.id,
         title_romaji: anime.title?.romaji ?? null,
         title_english: anime.title?.english ?? null,
+        // High Resolution Strategy: Prefer extraLarge (typically 460x650)
         cover_image: anime.coverImage?.extraLarge ?? anime.coverImage?.large ?? null,
         banner_image: anime.bannerImage ?? null,
         description: anime.description ?? null,
@@ -162,6 +173,9 @@ export function buildAnimeCachePayload(anime: SeasonalAnimeEntry, context: Seaso
         average_score: anime.averageScore ?? null,
         genres: anime.genres ?? null,
         status: anime.status ?? 'NOT_YET_RELEASED',
+        is_adult: isAdult,
+        is_eligible: isEligible,
+        popularity: anime.popularity ?? 0,
         season_id: context.seasonId,
         season_uuid:
             typeof context.seasonRecord?.id === 'string' && isUuid(context.seasonRecord.id)
@@ -173,13 +187,35 @@ export function buildAnimeCachePayload(anime: SeasonalAnimeEntry, context: Seaso
 }
 
 export function buildCharacterPayloads(anime: SeasonalAnimeEntry) {
+    if (!anime.characters?.nodes) return [];
+
+    // Curate: Sort by favourites descending and take top 2 to avoid clutter
+    const topCharacters = [...anime.characters.nodes]
+        .sort((a, b) => (b.favourites ?? 0) - (a.favourites ?? 0))
+        .slice(0, 2);
+
     const now = new Date().toISOString();
-    return (anime.characters?.nodes ?? []).map((char) => ({
-        id: char.id,
-        anime_id: anime.id,
-        name: char.name.full,
-        image: char.image.large,
-        role: 'MAIN',
-        updated_at: now
-    }));
+    return topCharacters
+        .filter(char => char.gender === 'Female' || char.gender === 'Male') // Exclude NULL/Other
+        .map((char) => {
+            // Determine role/gender label
+            const role = char.gender === 'Female' ? 'Waifu' : 'Husbando';
+            
+            // Calculate Price: Base 1000 + (Favorites / 10) capped at 5000
+            const popularityBonus = Math.floor((char.favourites ?? 0) / 10);
+            const price = Math.min(5000, 1000 + popularityBonus);
+
+            return {
+                id: char.id,
+                anime_id: anime.id,
+                name: char.name.full,
+                image: char.image.large,
+                role: role,
+                gender: char.gender,
+                favorites: char.favourites ?? 0,
+                price: price,
+                about: char.description ?? null,
+                updated_at: now
+            };
+        });
 }

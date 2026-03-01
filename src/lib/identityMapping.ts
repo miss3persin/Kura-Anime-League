@@ -2,59 +2,57 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { SeasonalAnimeEntry } from '@/lib/sync';
 import { searchKitsuAnime } from '@/lib/kitsu';
 import { searchMalAnime } from '@/lib/jikan';
+import offlineMapping from '../../supabase/seed/anime-offline-mapping.json';
 
-export interface IdentityMappingRecord {
+export interface IdentityMap {
   anilist_id: number;
-  kitsu_id?: number | null;
-  mal_id?: number | null;
-  title?: string | null;
-  metadata?: Record<string, unknown> | null;
+  kitsu_id: number | null;
+  mal_id: number | null;
+  tmdb_id?: number | null;
+  updated_at: string;
 }
 
-export async function findIdentityMapping(anilistId: number) {
-  if (!anilistId) return null;
-  const { data } = await supabaseAdmin
+export async function findIdentityMapping(anilistId: number): Promise<IdentityMap | null> {
+  const { data, error } = await supabaseAdmin
     .from('anime_identity_map')
     .select('*')
     .eq('anilist_id', anilistId)
-    .maybeSingle();
-  return data;
+    .single();
+
+  if (error || !data) return null;
+  return data as IdentityMap;
 }
 
-export async function findMappingsForIds(anilistIds: number[]) {
-  if (!anilistIds?.length) return {};
-  const { data } = await supabaseAdmin
+export async function upsertIdentityMapping(mapping: Partial<IdentityMap>) {
+  const { error } = await supabaseAdmin
     .from('anime_identity_map')
-    .select('anilist_id, kitsu_id, mal_id')
-    .in('anilist_id', anilistIds);
+    .upsert(mapping, { onConflict: 'anilist_id' });
 
-  const map: Record<number, { kitsu_id?: number | null; mal_id?: number | null }> = {};
-  for (const row of data ?? []) {
-    map[row.anilist_id] = {
-      kitsu_id: row.kitsu_id,
-      mal_id: row.mal_id
-    };
+  if (error) {
+    console.error('Failed to upsert identity mapping:', error);
   }
-  return map;
 }
 
-export async function upsertIdentityMapping(record: IdentityMappingRecord) {
-  if (!record?.anilist_id) return;
-  await supabaseAdmin.from('anime_identity_map').upsert({
-    anilist_id: record.anilist_id,
-    kitsu_id: record.kitsu_id ?? null,
-    mal_id: record.mal_id ?? null,
-    title: record.title ?? null,
-    metadata: record.metadata ?? null,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'anilist_id' });
-}
-
-export async function ensureIdentityMappingForAnime(anime: SeasonalAnimeEntry) {
-  if (!anime?.id) return null;
-
+export async function ensureIdentityMappingForAnime(anime: SeasonalAnimeEntry): Promise<IdentityMap | null> {
   const existing = await findIdentityMapping(anime.id);
-  if (existing?.kitsu_id && existing?.mal_id) {
+  
+  // 1. Local Fallback (Point 1)
+  const localMatch = (offlineMapping as any[]).find(m => m.anilist_id === anime.id);
+  if (localMatch) {
+    if (!existing || (localMatch.kitsu_id && !existing.kitsu_id) || (localMatch.mal_id && !existing.mal_id)) {
+      await upsertIdentityMapping({
+        anilist_id: anime.id,
+        kitsu_id: localMatch.kitsu_id ?? existing?.kitsu_id ?? null,
+        mal_id: localMatch.mal_id ?? existing?.mal_id ?? null,
+        updated_at: new Date().toISOString()
+      });
+      return findIdentityMapping(anime.id);
+    }
+    return existing;
+  }
+
+  // 2. Already fully mapped?
+  if (existing && existing.kitsu_id && existing.mal_id) {
     return existing;
   }
 
@@ -63,30 +61,37 @@ export async function ensureIdentityMappingForAnime(anime: SeasonalAnimeEntry) {
 
   let kitsuId = existing?.kitsu_id ?? null;
   if (!kitsuId) {
-    const kitsuResult = await searchKitsuAnime(title);
-    if (kitsuResult) {
-      const parsed = Number(kitsuResult.id);
-      if (!Number.isNaN(parsed)) {
-        kitsuId = parsed;
+    try {
+      const kitsuResult = await searchKitsuAnime(title);
+      if (kitsuResult) {
+        const parsed = Number(kitsuResult.id);
+        if (!Number.isNaN(parsed)) {
+          kitsuId = parsed;
+        }
       }
+    } catch (e) {
+      console.warn(`Identity Map: Kitsu search failed for "${title}":`, (e as Error).message);
     }
   }
 
   let malId = existing?.mal_id ?? null;
   if (!malId) {
-    const malResult = await searchMalAnime(title);
-    if (malResult?.mal_id) {
-      malId = malResult.mal_id;
+    try {
+      const malResult = await searchMalAnime(title);
+      if (malResult?.mal_id) {
+        malId = malResult.mal_id;
+      }
+    } catch (e) {
+      console.warn(`Identity Map: MAL search failed for "${title}":`, (e as Error).message);
     }
   }
 
   if (kitsuId || malId) {
     await upsertIdentityMapping({
       anilist_id: anime.id,
-      kitsu_id: kitsuId ?? null,
-      mal_id: malId ?? null,
-      title,
-      metadata: { refreshed_at: new Date().toISOString() }
+      kitsu_id: kitsuId,
+      mal_id: malId,
+      updated_at: new Date().toISOString()
     });
   }
 
@@ -96,8 +101,8 @@ export async function ensureIdentityMappingForAnime(anime: SeasonalAnimeEntry) {
 function buildTitle(anime: SeasonalAnimeEntry) {
   if (!anime) return null;
   return (
-    anime.title?.romaji ??
     anime.title?.english ??
+    anime.title?.romaji ??
     anime.title?.native ??
     null
   );

@@ -28,6 +28,8 @@ interface Team {
     team_picks: TeamPick[];
 }
 
+const FINALE_MULTIPLIER = 3.0;
+
 interface AnimeStatus {
     id: number;
     status: string;
@@ -38,6 +40,8 @@ interface AnimeStatus {
         airingAt: number;
         episode: number;
     } | null;
+    arc_hype_multiplier?: number;
+    is_finale_week?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -80,6 +84,20 @@ export async function POST(request: Request) {
         // 3. Fetch live status (tries AniList, falls back to Kitsu/cache on rate-limit)
         const animeStatuses = await fetchAiringStatuses(allAnimeIds) as Record<number, AnimeStatus>;
 
+        // 3.1 Fetch extra metadata from cache (Arc multipliers, finale flags)
+        const { data: metaRows } = await supabaseAdmin
+            .from('anime_cache')
+            .select('id, arc_hype_multiplier, is_finale_week')
+            .in('id', allAnimeIds);
+
+        const metaMap: Record<number, { multiplier: number; isFinale: boolean }> = {};
+        metaRows?.forEach(row => {
+            metaMap[row.id] = {
+                multiplier: Number(row.arc_hype_multiplier || 1.0),
+                isFinale: Boolean(row.is_finale_week)
+            };
+        });
+
         // 4. Calculate scores per team
         const weekScores = [];
         const teamScoreMap: Record<string, number> = {};
@@ -88,12 +106,14 @@ export async function POST(request: Request) {
             const picks = team.team_picks.map(p => p.anime_id);
             let totalScore = 0;
             const breakdown: Record<number, number> = {};
+            const modifiers: Array<{ anime_id: number; type: string; value: number }> = [];
 
             for (const animeId of picks) {
                 const status = animeStatuses[animeId];
                 if (!status) continue;
 
                 let score = 0;
+                const meta = metaMap[animeId] || { multiplier: 1.0, isFinale: false };
 
                 // Base: episode aired this week?
                 const airedRecently = status.nextAiringEpisode &&
@@ -117,11 +137,25 @@ export async function POST(request: Request) {
                     score += HIATUS_PENALTY;
                 }
 
-                // Multipliers
+                // Arc Hype Multiplier
+                if (meta.multiplier !== 1.0) {
+                    score = Math.round(score * meta.multiplier);
+                    modifiers.push({ anime_id: animeId, type: 'arc_boost', value: meta.multiplier });
+                }
+
+                // Multipliers (Roles)
                 if (team.captain_anime_id === animeId) {
                     score = Math.round(score * CAPTAIN_MULTIPLIER);
+                    modifiers.push({ anime_id: animeId, type: 'captain', value: CAPTAIN_MULTIPLIER });
                 } else if (team.vice_captain_anime_id === animeId) {
                     score = Math.round(score * VICE_CAPTAIN_MULTIPLIER);
+                    modifiers.push({ anime_id: animeId, type: 'vice_captain', value: VICE_CAPTAIN_MULTIPLIER });
+                }
+
+                // Finale Bonus (Final week gives 3x)
+                if (meta.isFinale) {
+                    score = Math.round(score * FINALE_MULTIPLIER);
+                    modifiers.push({ anime_id: animeId, type: 'finale', value: FINALE_MULTIPLIER });
                 }
 
                 breakdown[animeId] = score;
@@ -136,11 +170,28 @@ export async function POST(request: Request) {
                 week_number,
                 score: finalScore,
                 breakdown,
+                score_modifiers: modifiers,
                 season_kp_running_total: (team.season_kp ?? 0) + finalScore,
                 calculated_at: new Date().toISOString()
             });
 
             teamScoreMap[team.id] = finalScore;
+
+            // Achievement Check: GOAT Picker (90+ average)
+            if (picks.length > 0 && (finalScore / picks.length) >= 90) {
+                const { data: goatAchievement } = await supabaseAdmin
+                    .from('achievements')
+                    .select('id')
+                    .eq('name', 'GOAT Picker')
+                    .single();
+                
+                if (goatAchievement) {
+                    await supabaseAdmin.from('user_achievements').upsert({
+                        user_id: team.user_id,
+                        achievement_id: goatAchievement.id
+                    }, { onConflict: 'user_id,achievement_id' });
+                }
+            }
         }
 
         // 5. Upsert weekly scores

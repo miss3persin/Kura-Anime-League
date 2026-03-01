@@ -4,8 +4,9 @@ export interface SeasonInfoPayload {
   phase: "pre_draft" | "draft_open" | "season_live" | "transfer_review" | "off_season" | "ended";
   deadline: string | null;
   deadlineLabel: string | null;
-  activeSeason: { name?: string | null; [key: string]: unknown } | null;
-  upcomingSeason: { name?: string | null; [key: string]: unknown } | null;
+  activeSeason: { id?: string | number | null; name?: string | null; [key: string]: unknown } | null;
+  upcomingSeason: { id?: string | number | null; name?: string | null; [key: string]: unknown } | null;
+  draftSeason: { id?: string | number | null; name?: string | null; [key: string]: unknown } | null;
   currentWeek: number;
   totalWeeks: number;
 }
@@ -33,6 +34,7 @@ export function useSeasonTimeline(): SeasonTimeline {
           deadlineLabel: data.deadlineLabel,
           activeSeason: data.activeSeason ?? null,
           upcomingSeason: data.upcomingSeason ?? null,
+          draftSeason: data.draftSeason ?? null,
           currentWeek: data.currentWeek ?? 1,
           totalWeeks: data.totalWeeks ?? 12
         });

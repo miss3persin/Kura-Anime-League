@@ -6,7 +6,7 @@ import { NeonButton } from "@/components/ui/neon-button";
 import {
   Zap, CheckCircle,
   Loader2, Search, RefreshCw,
-  Shield, Heart, LayoutGrid, Star
+  Shield, Heart, LayoutGrid, Star, Info
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +27,7 @@ interface Anime {
   hype_score: number;
   format?: string;
   genres?: string[];
+  is_eligible: boolean;
 }
 
 interface Character {
@@ -34,6 +35,11 @@ interface Character {
   name: string;
   image: string;
   anime_id: number;
+  gender?: string;
+  role: string;
+  price: number;
+  favorites: number;
+  about?: string;
 }
 
 interface DraftUser {
@@ -88,10 +94,13 @@ export default function DraftPage() {
   const [budget, setBudget] = useState(20000);
   const [user, setUser] = useState<DraftUser | null>(null);
   const [activeTab, setActiveTab] = useState<'anime' | 'characters'>('anime');
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  
   const timeline = useSeasonTimeline();
   const seasonInfo = timeline.seasonInfo;
   const [draftClosed, setDraftClosed] = useState(false);
   const [previewAnime, setPreviewAnime] = useState<Anime[]>([]);
+  
   const phaseBadgeLabel = seasonInfo?.phase
     ? seasonInfo.phase
         .split("_")
@@ -102,10 +111,7 @@ export default function DraftPage() {
   const deadlineLabel = seasonInfo?.deadlineLabel ?? "Draft Opens";
   const deadlineValue = seasonInfo?.deadline
     ? new Date(seasonInfo.deadline).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric"
+        month: "short", day: "numeric", hour: "numeric", minute: "numeric"
       })
     : "TBD";
 
@@ -122,10 +128,10 @@ export default function DraftPage() {
     ? "bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.4)]"
     : "bg-red-500";
   const budgetTone = budget < 0 ? "text-red-400" : "text-accent";
+  
   const getTabButtonClass = (tab: "anime" | "characters") =>
     `px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer ${tab === activeTab ? "bg-accent text-white shadow-lg" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`;
 
-  // Modal State
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -156,11 +162,19 @@ export default function DraftPage() {
     []
   );
 
-  const fetchCharacters = useCallback(async () => {
-    const { data } = await supabase
+  const fetchCharacters = useCallback(async (animeIds?: number[]) => {
+    let query = supabase
       .from('character_cache')
       .select('*')
-      .order('name', { ascending: true });
+      .in('gender', ['Male', 'Female']);
+
+    if (animeIds && animeIds.length > 0) {
+      query = query.in('anime_id', animeIds);
+    }
+
+    const { data } = await query
+      .order('favorites', { ascending: false })
+      .limit(50);
     return (data as Character[]) ?? [];
   }, []);
 
@@ -178,16 +192,19 @@ export default function DraftPage() {
     }) => {
       setLoading(true);
       try {
-        const [animeForSeason, upcomingAnime, characters] = await Promise.all([
+        const [animeForSeason, upcomingAnime] = await Promise.all([
           fetchAnimeBySeason(
             activeSeasonId ?? upcomingSeasonId,
             activeSeasonName ?? upcomingSeasonName
-          ),
+          ).catch((e) => { console.error("Anime fetch error:", e); return []; }),
           upcomingSeasonId || upcomingSeasonName
-            ? fetchAnimeBySeason(upcomingSeasonId, upcomingSeasonName)
+            ? fetchAnimeBySeason(upcomingSeasonId, upcomingSeasonName).catch((e) => { console.error("Upcoming anime fetch error:", e); return []; })
             : Promise.resolve([]),
-          fetchCharacters(),
         ]);
+
+        const animeIds = animeForSeason.map(a => a.id);
+        const characters = await fetchCharacters(animeIds).catch((e) => { console.error("Character fetch error:", e); return []; });
+
         setAnimeList(animeForSeason);
         setPreviewAnime(upcomingAnime.slice(0, 8));
         setCharacterList(characters);
@@ -204,9 +221,13 @@ export default function DraftPage() {
     const init = async () => {
       if (!seasonInfo) return;
       setDraftClosed(seasonInfo.phase !== 'draft_open');
+
+      const targetId = (seasonInfo.draftSeason?.id ?? seasonInfo.activeSeason?.id ?? seasonInfo.upcomingSeason?.id) as string | number | null;
+      const targetName = seasonInfo.draftSeason?.name ?? seasonInfo.activeSeason?.name ?? seasonInfo.upcomingSeason?.name;
+
       await refreshSeasonData({
-        activeSeasonId: seasonInfo.activeSeason?.id as string | number | null,
-        activeSeasonName: seasonInfo.activeSeason?.name,
+        activeSeasonId: targetId,
+        activeSeasonName: targetName,
         upcomingSeasonId: seasonInfo.upcomingSeason?.id as string | number | null,
         upcomingSeasonName: seasonInfo.upcomingSeason?.name
       });
@@ -235,7 +256,7 @@ export default function DraftPage() {
           upcomingSeasonId: seasonInfo?.upcomingSeason?.id as string | number | null,
           upcomingSeasonName: seasonInfo?.upcomingSeason?.name
         });
-        showAlert("Sync Complete", `Imported ${result.data.count} titles.`);
+        showAlert("Sync Complete", `Archived data synchronized.`);
       }
     } catch (err) {
       console.error(err);
@@ -248,9 +269,7 @@ export default function DraftPage() {
   const toggleSelectAnime = (anime: Anime) => {
     if (selectedAnimeIds.includes(anime.id)) {
       setSelectedAnimeIds(prev => prev.filter(id => id !== anime.id));
-      const newBudget = budget + anime.cost_kp;
-      setBudget(newBudget);
-      window.dispatchEvent(new CustomEvent('kalKpUpdate', { detail: { total_kp: newBudget } }));
+      setBudget(prev => prev + anime.cost_kp);
     } else {
       if (selectedAnimeIds.length >= 5) {
         showAlert("Draft Error", "Maximum team size is 5 shows.");
@@ -261,9 +280,45 @@ export default function DraftPage() {
         return;
       }
       setSelectedAnimeIds(prev => [...prev, anime.id]);
-      const newBudget = budget - anime.cost_kp;
-      setBudget(newBudget);
-      window.dispatchEvent(new CustomEvent('kalKpUpdate', { detail: { total_kp: newBudget } }));
+      setBudget(prev => prev - anime.cost_kp);
+    }
+  };
+
+  const toggleSelectCharacter = (char: Character, type: 'star' | 'waifu') => {
+    if (type === 'star') {
+      if (starCharId === char.id) {
+        setStarCharId(null);
+        setBudget(prev => prev + char.price);
+      } else {
+        if (budget < char.price) {
+          showAlert("Insufficient KP", "Not enough KuraPoints to recruit this star.");
+          return;
+        }
+        if (starCharId) {
+          const oldChar = characterList.find(c => c.id === starCharId);
+          setBudget(prev => prev + (oldChar?.price || 0) - char.price);
+        } else {
+          setBudget(prev => prev - char.price);
+        }
+        setStarCharId(char.id);
+      }
+    } else {
+      if (waifuId === char.id) {
+        setWaifuId(null);
+        setBudget(prev => prev + char.price);
+      } else {
+        if (budget < char.price) {
+          showAlert("Insufficient KP", "Not enough KuraPoints for this waifu/husbando.");
+          return;
+        }
+        if (waifuId) {
+          const oldChar = characterList.find(c => c.id === waifuId);
+          setBudget(prev => prev + (oldChar?.price || 0) - char.price);
+        } else {
+          setBudget(prev => prev - char.price);
+        }
+        setWaifuId(char.id);
+      }
     }
   };
 
@@ -273,13 +328,13 @@ export default function DraftPage() {
       return;
     }
     if (selectedAnimeIds.length === 0) {
-      showAlert("Draft Picks Needed", "Select at least one hero before saving.");
+      showAlert("Draft Picks Needed", "Select at least one series before locking.");
       return;
     }
 
     setSaving(true);
     try {
-      const currentSeasonId = seasonInfo?.activeSeason?.id;
+      const currentSeasonId = seasonInfo?.draftSeason?.id ?? seasonInfo?.activeSeason?.id;
       if (!currentSeasonId) throw new Error("No active draft season identified.");
 
       const { data: teamData, error: teamError } = await supabase
@@ -293,20 +348,16 @@ export default function DraftPage() {
         .single();
 
       if (teamError) throw teamError;
+      const castedTeamId = teamData.id;
 
-      const castedTeamData = teamData as { id: string };
-
-      await supabase.from('team_picks').delete().eq('team_id', castedTeamData.id);
-      const picks = selectedAnimeIds.map(id => ({
-        team_id: castedTeamData.id,
-        anime_id: id
-      }));
+      await supabase.from('team_picks').delete().eq('team_id', castedTeamId);
+      const picks = selectedAnimeIds.map(id => ({ team_id: castedTeamId, anime_id: id }));
       await supabase.from('team_picks').insert(picks);
 
-      await supabase.from('character_picks').delete().eq('team_id', castedTeamData.id);
+      await supabase.from('character_picks').delete().eq('team_id', castedTeamId);
       const charPicks = [];
-      if (starCharId) charPicks.push({ team_id: castedTeamData.id, character_id: starCharId, pick_type: 'STAR_CHAR' });
-      if (waifuId) charPicks.push({ team_id: castedTeamData.id, character_id: waifuId, pick_type: 'WAIFU_HUSBANDO' });
+      if (starCharId) charPicks.push({ team_id: castedTeamId, character_id: starCharId, pick_type: 'STAR_CHAR' });
+      if (waifuId) charPicks.push({ team_id: castedTeamId, character_id: waifuId, pick_type: 'WAIFU_HUSBANDO' });
       if (charPicks.length > 0) {
         await supabase.from('character_picks').insert(charPicks);
       }
@@ -322,8 +373,9 @@ export default function DraftPage() {
   };
 
   const filteredAnime = animeList.filter(a =>
+    a.is_eligible && (
     a.title_romaji.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.title_english?.toLowerCase().includes(searchQuery.toLowerCase())
+    a.title_english?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredCharacters = characterList.filter(c =>
@@ -333,7 +385,7 @@ export default function DraftPage() {
   return (
     <AppShell>
       <div className="space-y-10">
-        {/* Cinematic Header HUD */}
+        {/* Header HUD */}
         <div className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-[3.5rem] p-10 md:p-14 shadow-2xl">
           <div className="absolute top-0 right-0 p-16 opacity-[0.03] rotate-12 pointer-events-none">
             <LayoutGrid size={320} />
@@ -350,7 +402,7 @@ export default function DraftPage() {
                   The Draft
                 </h1>
                 <p className="text-sm md:text-base text-[var(--muted)] font-bold uppercase tracking-[0.2em]">
-                  {seasonDisplayName} <span className="mx-3 opacity-30">|</span> 20,000 KP Operational Budget
+                  {seasonDisplayName} <span className="mx-3 opacity-30">|</span> 20,000 KP Draft Budget
                 </p>
               </div>
               <div className="flex flex-wrap gap-4 pt-4">
@@ -377,7 +429,7 @@ export default function DraftPage() {
                   <Zap size={40} className="text-accent" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Remaining Credits</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Available Points</p>
                   <p className={`text-4xl font-black italic tracking-tighter font-outfit transition-colors ${budgetTone}`}>
                     {budget.toLocaleString()} <span className="text-xs uppercase align-middle ml-1">KP</span>
                   </p>
@@ -397,59 +449,26 @@ export default function DraftPage() {
           </div>
         </div>
 
-        {/* Phase Narrative Card */}
-        <div className="bg-accent/5 border border-accent/20 rounded-[2.5rem] p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 group hover:bg-accent/10 transition-all shadow-lg">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-white shadow-2xl shadow-accent/40 rotate-3 group-hover:rotate-0 transition-transform">
-              <Shield size={32} />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-xl font-black uppercase italic tracking-tight text-[var(--foreground)]">{phaseBadgeLabel} Phase Active</h3>
-              <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest max-w-lg leading-relaxed">
-                {phaseAction.description}
-              </p>
-            </div>
-          </div>
-          <NeonButton onClick={() => router.push(phaseAction.href)} className="w-full md:w-auto px-10 py-4 shadow-xl">
-            {phaseAction.label}
-          </NeonButton>
-        </div>
-
         {/* Search & Tabs HUD */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
           <div className="flex gap-2 p-1.5 bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-sm">
-            <button
-              onClick={() => setActiveTab('anime')}
-              className={getTabButtonClass('anime')}
-            >
-              Anime Series
-            </button>
-            <button
-              onClick={() => setActiveTab('characters')}
-              className={getTabButtonClass('characters')}
-            >
-              Star Recruits
-            </button>
+            <button onClick={() => setActiveTab('anime')} className={getTabButtonClass('anime')}>Anime Series</button>
+            <button onClick={() => setActiveTab('characters')} className={getTabButtonClass('characters')}>Star Recruits</button>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition-colors group-focus-within:text-accent" size={16} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
               <input
                 type="text"
-                placeholder={`Search ${activeTab}...`}
+                placeholder={`Search ${activeTab === 'anime' ? 'Series' : 'Recruits'}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl pl-12 pr-6 py-4 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64 shadow-sm"
+                className="bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl pl-12 pr-6 py-4 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-accent/40 focus:bg-accent/5 transition-all w-full md:w-64"
               />
             </div>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] hover:border-accent/20 transition-all cursor-pointer shadow-sm disabled:opacity-50"
-              title="Refresh seasonal data"
-            >
-              <RefreshCw className={`transition-transform ${syncing ? 'animate-spin' : ''}`} size={20} />
+            <button onClick={handleSync} disabled={syncing} className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer shadow-sm">
+              <RefreshCw className={syncing ? 'animate-spin' : ''} size={20} />
             </button>
           </div>
         </div>
@@ -471,7 +490,7 @@ export default function DraftPage() {
                   className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isSelected ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
                   <div className="aspect-[3/4] overflow-hidden relative">
-                    <img src={anime.cover_image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${anime.title_romaji} cover`} />
+                    <img src={anime.cover_image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${anime.title_english || anime.title_romaji} cover`} />
                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
                       <p className="text-[10px] font-black text-white italic">{anime.cost_kp.toLocaleString()} KP</p>
                     </div>
@@ -485,23 +504,19 @@ export default function DraftPage() {
                   </div>
                   <div className="p-6 space-y-4">
                     <div className="space-y-1">
-                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] truncate group-hover:text-accent transition-colors italic leading-tight">
-                        {anime.title_romaji}
+                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] truncate italic leading-tight">
+                        {anime.title_english || anime.title_romaji}
                       </h3>
                       <p className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest truncate opacity-60">
-                        {anime.format} <span className="mx-1">•</span> {anime.genres?.[0] || 'Original'}
+                        {anime.title_english ? anime.title_romaji : (anime.format + ' • ' + (anime.genres?.[0] || 'Original'))}
                       </p>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}</span>
+                        <span className="text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}%</span>
                       </div>
-                      <button
-                        onClick={() => toggleSelectAnime(anime)}
-                        disabled={draftClosed}
-                        className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${isSelected ? 'bg-[var(--background)] text-[var(--muted)] border border-[var(--border)]' : 'bg-accent text-white shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed'}`}
-                      >
+                      <button onClick={() => toggleSelectAnime(anime)} disabled={draftClosed} className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-[var(--background)] text-[var(--muted)]' : 'bg-accent text-white'}`}>
                         {isSelected ? 'Remove' : 'Draft'}
                       </button>
                     </div>
@@ -513,40 +528,45 @@ export default function DraftPage() {
             filteredCharacters.map((char) => {
               const isStar = starCharId === char.id;
               const isWaifu = waifuId === char.id;
+              const isSelected = isStar || isWaifu;
               return (
                 <motion.div
                   layout
                   key={char.id}
                   whileHover={{ y: -8 }}
-                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isStar || isWaifu ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
+                  className={`group relative bg-[var(--surface)] border rounded-[2rem] overflow-hidden transition-all shadow-xl ${isSelected ? 'border-accent ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
-                  <div className="aspect-square overflow-hidden relative">
-                    <img src={char.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${char.name} profile`} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    {(isStar || isWaifu) && (
-                      <div className="absolute top-4 right-4 w-10 h-10 bg-accent text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white/20">
-                        {isStar ? <Star size={20} /> : <Heart size={20} />}
+                  <div className="aspect-[3/4] overflow-hidden relative cursor-pointer" onClick={() => setSelectedCharacter(char)}>
+                    <img src={char.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={`${char.name} profile`} />
+                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                      <p className="text-[10px] font-black text-white italic">{char.price.toLocaleString()} KP</p>
+                    </div>
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-accent/20 flex items-center justify-center backdrop-blur-[2px]">
+                        <div className="w-14 h-14 bg-accent text-white rounded-full flex items-center justify-center shadow-2xl">
+                          {isStar ? <Star size={32} /> : <Heart size={32} />}
+                        </div>
                       </div>
                     )}
+                    <div className="absolute bottom-4 right-4">
+                      <button className="p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white/60 hover:text-white transition-colors">
+                        <Info size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div className="p-6 space-y-4 text-center">
-                    <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] group-hover:text-accent transition-colors italic truncate leading-tight">
-                      {char.name}
-                    </h3>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-black uppercase tracking-tight text-[var(--foreground)] italic truncate leading-tight">{char.name}</h3>
+                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest opacity-60">
+                        {char.role} <span className="mx-1">•</span> {char.favorites.toLocaleString()} Faves
+                      </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setStarCharId(isStar ? null : char.id)}
-                        disabled={draftClosed}
-                        className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all cursor-pointer ${isStar ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-yellow-500 border border-transparent hover:border-yellow-500/20'}`}
-                      >
-                        Hero
+                      <button onClick={() => toggleSelectCharacter(char, 'star')} disabled={draftClosed} className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                        Recruit
                       </button>
-                      <button
-                        onClick={() => setWaifuId(isWaifu ? null : char.id)}
-                        disabled={draftClosed}
-                        className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all cursor-pointer ${isWaifu ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20' : 'bg-[var(--surface-hover)] text-[var(--muted)] hover:text-pink-500 border border-transparent hover:border-pink-500/20'}`}
-                      >
-                        Waifu
+                      <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed} className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                        {char.role === 'Waifu' ? 'Waifu' : char.role === 'Husbando' ? 'Husbando' : 'Select'}
                       </button>
                     </div>
                   </div>
@@ -556,104 +576,97 @@ export default function DraftPage() {
           )}
         </div>
 
-        {/* Selection Sidebar (Mobile) & Fixed Summary HUD */}
+        {/* Fixed Summary HUD */}
         <AnimatePresence>
           {selectedAnimeIds.length > 0 && (
-            <motion.div
-              initial={{ y: 100 }}
-              animate={{ y: 0 }}
-              exit={{ y: 100 }}
-              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-4xl"
+            <motion.div 
+              initial={{ y: 100 }} 
+              animate={{ y: 0 }} 
+              exit={{ y: 100 }} 
+              className="fixed bottom-10 left-0 right-0 md:left-72 z-50 px-6 pointer-events-none flex justify-center"
             >
-              <div className="bg-black/80 backdrop-blur-2xl border-2 border-white/10 rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent pointer-events-none" />
-
+              <div className="bg-black/80 backdrop-blur-2xl border-2 border-white/10 rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden w-full max-w-4xl pointer-events-auto">
                 <div className="flex items-center gap-6 relative z-10">
                   <div className="flex -space-x-4">
                     {selectedAnimeIds.slice(0, 5).map((id) => {
                       const anime = animeList.find(a => a.id === id);
                       return (
                         <div key={id} className="w-14 h-14 rounded-2xl border-4 border-black bg-[var(--surface)] overflow-hidden shadow-xl">
-                          <img src={anime?.cover_image} className="w-full h-full object-cover" alt={`${anime?.title_romaji} thumbnail`} />
+                          <img src={anime?.cover_image} className="w-full h-full object-cover" alt="pick" />
                         </div>
                       );
                     })}
-                    {Array.from({ length: Math.max(0, 5 - selectedAnimeIds.length) }).map((_, i) => (
-                      <div key={i} className="w-14 h-14 rounded-2xl border-4 border-black bg-[var(--surface-hover)] border-dashed border-[var(--muted)]/30 flex items-center justify-center text-[var(--muted)]/40 font-black text-xl">
-                        +
-                      </div>
-                    ))}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Active Roster</p>
-                    <p className="text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Series Operational</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Your Team</p>
+                    <p className="text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Selected</p>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-6 relative z-10">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Projected Impact</p>
-                    <p className="text-lg font-black text-white italic">{(20000 - budget).toLocaleString()} KP Allocated</p>
-                  </div>
-                  <button
-                    onClick={handleSaveTeam}
-                    disabled={saving || draftClosed}
-                    className="px-10 py-4 bg-accent text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:opacity-90 transition-all shadow-xl shadow-accent/40 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {saving ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-                    {saving ? 'SYNCHRONIZING...' : 'LOCK LINEUP'}
-                  </button>
-                </div>
+                <button onClick={handleSaveTeam} disabled={saving || draftClosed} className="px-10 py-4 bg-accent text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl flex items-center gap-3">
+                  {saving ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
+                  {saving ? 'SAVING CHANGES...' : 'CONFIRM TEAM'}
+                </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Empty Catalog State */}
-        {!loading && filteredAnime.length === 0 && (
-          <div className="text-center py-40 bg-[var(--surface)] rounded-[3rem] border border-[var(--border)] border-dashed">
-            <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <RefreshCw className="text-accent opacity-40" size={40} />
-            </div>
-            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[var(--foreground)]">No Archive Matches</h3>
-            <p className="text-[var(--muted)] text-xs font-bold uppercase tracking-widest mt-2">Adjust your search filters or refresh the seasonal feed</p>
-            <button
-              onClick={() => { setSearchQuery(""); handleSync(); }}
-              className="mt-8 px-10 py-4 bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--muted)] font-black text-[10px] uppercase tracking-widest rounded-2xl hover:text-accent hover:border-accent/40 transition-all cursor-pointer shadow-md"
-            >
-              Reset Terminal
-            </button>
-          </div>
-        )}
-
-        {/* Seasonal Preview HUD */}
-        {previewAnime.length > 0 && (
-          <div className="space-y-8 pt-10 border-t border-[var(--border)]">
-            <div className="flex justify-between items-end px-2">
-              <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Scouting Report</p>
-                <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Upcoming Drops</h2>
-              </div>
-              <p className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] mb-1">Pre-season Preview active</p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 px-2 opacity-60">
-              {previewAnime.map((anime) => (
-                <div key={anime.id} className="group relative aspect-[3/4.5] rounded-2xl overflow-hidden border border-[var(--border)] grayscale hover:grayscale-0 transition-all shadow-sm">
-                  <img src={anime.cover_image} className="w-full h-full object-cover" alt={`${anime.title_romaji} upcoming`} />
-                  <div className="absolute inset-0 bg-black/40 group-hover:opacity-0 transition-opacity" />
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-[8px] font-black uppercase text-white truncate drop-shadow-lg">{anime.title_romaji}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
         <p className="text-[var(--foreground)] font-bold uppercase tracking-tight text-sm italic">{modalMessage}</p>
+      </Modal>
+
+      <Modal 
+        isOpen={!!selectedCharacter} 
+        onClose={() => setSelectedCharacter(null)} 
+        title={selectedCharacter?.name || ""}
+        maxWidth="max-w-3xl"
+      >
+        <div className="flex flex-col md:flex-row gap-10 items-start">
+          <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl flex-shrink-0">
+            <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
+          </div>
+          <div className="flex-grow space-y-6">
+            <div className="flex flex-wrap gap-2">
+              <span className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.role}</span>
+              <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.favorites.toLocaleString()} Faves</span>
+              <span className="bg-white/5 text-[var(--muted)] border border-white/10 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{selectedCharacter?.gender}</span>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Character Bio</p>
+              <div className="text-xs leading-relaxed text-[var(--muted)] font-medium max-h-48 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-accent/20">
+                {selectedCharacter?.about 
+                  ? selectedCharacter.about
+                      .replace(/<[^>]*>/g, '') // Remove HTML
+                      .replace(/__(.+?)__/g, '$1') // Bold __text__ -> text
+                      .replace(/~(.+?)~/g, '$1') // Italic ~text~ -> text
+                      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold **text** -> text
+                      .replace(/\*(.+?)\*/g, '$1') // Italic *text* -> text
+                      .replace(/!\[.*?\]\(.*?\)/g, '') // Remove markdown images
+                      .replace(/\[.*?\]\(.*?\)/g, '$1') // Remove markdown links but keep text
+                      .replace(/Height:.*?\n/gi, '') // Remove Height info
+                      .replace(/Age:.*?\n/gi, '') // Remove Age info
+                      .replace(/Weight:.*?\n/gi, '') // Remove Weight info
+                      .replace(/Blood Type:.*?\n/gi, '') // Remove Blood info
+                      .trim()
+                      .slice(0, 800) + (selectedCharacter.about.length > 800 ? "..." : "")
+                  : "No detailed bio available for this character. They are currently part of the seasonal lineup."
+                }
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+              <div>
+                <p className="text-[8px] font-black uppercase text-[var(--muted)] mb-1">Recruitment Cost</p>
+                <p className="text-xl font-black text-white italic tracking-tighter">{selectedCharacter?.price.toLocaleString()} KP</p>
+              </div>
+              <div className="flex items-end justify-end">
+                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Intel</NeonButton>
+              </div>
+            </div>
+          </div>
+        </div>
       </Modal>
     </AppShell>
   );

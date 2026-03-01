@@ -14,12 +14,6 @@ type SeasonPhase =
     | 'ended'
     | 'off_season';
 
-function parseDate(value?: string | null): Date | null {
-    if (!value) return null;
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 interface SeasonData {
     draft_opens_at?: string | null;
     draft_closes_at?: string | null;
@@ -75,7 +69,7 @@ export async function GET() {
             .from('seasons')
             .select('*')
             .eq('status', 'active')
-            .single();
+            .maybeSingle();
 
         const activeSeason = rawActiveSeason as SeasonData | null;
 
@@ -89,27 +83,40 @@ export async function GET() {
 
         const upcomingSeason = rawUpcomingSeason as SeasonData | null;
 
-        if (activeSeason) {
-            const { phase, deadline, deadlineLabel } = derivePhase(activeSeason, now);
+        const activePhase = derivePhase(activeSeason, now);
+        const upcomingPhase = derivePhase(upcomingSeason, now);
+
+        // If the upcoming season's draft is open, that takes precedence for the "drafting" phase
+        if (upcomingPhase.phase === 'draft_open') {
             return NextResponse.json({
-                phase,
-                deadline,
-                deadlineLabel,
+                phase: 'draft_open',
+                deadline: upcomingPhase.deadline,
+                deadlineLabel: upcomingPhase.deadlineLabel,
+                activeSeason: activeSeason, // Still return active for live tracking
+                upcomingSeason,
+                draftSeason: upcomingSeason,
+                currentWeek: activeSeason?.week_number ?? 0,
+                totalWeeks: activeSeason?.total_weeks ?? 12
+            });
+        }
+
+        if (activeSeason) {
+            return NextResponse.json({
+                ...activePhase,
                 activeSeason,
                 upcomingSeason,
+                draftSeason: activeSeason,
                 currentWeek: activeSeason.week_number ?? 1,
                 totalWeeks: activeSeason.total_weeks ?? 12
             });
         }
 
         if (upcomingSeason) {
-            const { phase, deadline, deadlineLabel } = derivePhase(upcomingSeason, now);
             return NextResponse.json({
-                phase,
-                deadline,
-                deadlineLabel,
-                activeSeason: upcomingSeason,
+                ...upcomingPhase,
+                activeSeason: null,
                 upcomingSeason,
+                draftSeason: upcomingSeason,
                 currentWeek: upcomingSeason.week_number ?? 0,
                 totalWeeks: upcomingSeason.total_weeks ?? 12
             });
@@ -121,6 +128,7 @@ export async function GET() {
             deadlineLabel: null,
             activeSeason: null,
             upcomingSeason: null,
+            draftSeason: null,
             currentWeek: 0,
             totalWeeks: 0
         });

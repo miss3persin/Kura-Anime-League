@@ -17,6 +17,9 @@ export interface AniListCharacter {
   image: {
     large: string;
   };
+  gender?: string;
+  favourites?: number;
+  description?: string;
 }
 
 export interface AniListMedia {
@@ -78,7 +81,7 @@ query ($season: MediaSeason, $seasonYear: Int, $page: Int, $perPage: Int) {
       lastPage
       hasNextPage
     }
-    media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC) {
+    media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
       id
       title {
         romaji
@@ -94,8 +97,10 @@ query ($season: MediaSeason, $seasonYear: Int, $page: Int, $perPage: Int) {
       episodes
       status
       averageScore
+      popularity
+      isAdult
       genres
-      characters(role: MAIN, sort: [RELEVANCE, ID]) {
+      characters(role: MAIN, sort: [FAVOURITES_DESC]) {
         nodes {
           id
           name {
@@ -104,6 +109,9 @@ query ($season: MediaSeason, $seasonYear: Int, $page: Int, $perPage: Int) {
           image {
             large
           }
+          gender
+          favourites
+          description
         }
       }
     }
@@ -116,51 +124,69 @@ export async function fetchAniList<T = unknown>(
   variables: Record<string, unknown>,
   options?: { endpoint?: string; metadata?: Record<string, unknown> }
 ): Promise<AniListFetchResult<T>> {
-  const startTime = Date.now();
-  const response = await fetch(ANILIST_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      query,
-      variables,
-    }),
-  });
+  const maxRetries = 3;
+  let lastError: any = null;
 
-  const data = await response.json();
-  const duration = Date.now() - startTime;
-  const rateLimit = parseRateLimitInfo(response.headers);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const startTime = Date.now();
+      const response = await fetch(ANILIST_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
+      });
 
-  const endpointName = options?.endpoint ?? 'default';
-  await logApiRateLimit({
-    source: 'AniList',
-    endpoint: endpointName,
-    status: response.status,
-    success: response.ok,
-    limit: rateLimit.limit,
-    remaining: rateLimit.remaining,
-    resetAt: rateLimit.reset ? new Date(rateLimit.reset * 1000).toISOString() : null,
-    bucket: rateLimit.bucket,
-    message: response.ok ? 'ok' : data.errors?.[0]?.message,
-    metadata: {
-      durationMs: duration,
-      querySnippet: query.slice(0, 160),
-      variables: scrubVariables(variables),
-      ...options?.metadata
+      const data = await response.json();
+      const duration = Date.now() - startTime;
+      const rateLimit = parseRateLimitInfo(response.headers);
+
+      const endpointName = options?.endpoint ?? 'default';
+      await logApiRateLimit({
+        source: 'AniList',
+        endpoint: endpointName,
+        status: response.status,
+        success: response.ok,
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        resetAt: rateLimit.reset ? new Date(rateLimit.reset * 1000).toISOString() : null,
+        bucket: rateLimit.bucket,
+        message: response.ok ? 'ok' : data.errors?.[0]?.message,
+        metadata: {
+          durationMs: duration,
+          querySnippet: query.slice(0, 160),
+          variables: scrubVariables(variables),
+          ...options?.metadata
+        }
+      });
+
+      if (!response.ok) {
+        const message = data.errors?.[0]?.message || 'Failed to fetch from AniList';
+        if (response.status === 429) {
+          throw new AniListRateLimitError(message, rateLimit, response.status);
+        }
+        throw new Error(message);
+      }
+
+      return { data: data.data as T, rateLimit };
+    } catch (error: any) {
+      lastError = error;
+      const isNetworkError = error.message?.includes('fetch failed') || error.code === 'EAI_AGAIN';
+      if (isNetworkError && attempt < maxRetries) {
+        const delay = attempt * 1000;
+        console.warn(`AniList fetch attempt ${attempt} failed (DNS/Network). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
     }
-  });
-
-  if (!response.ok) {
-    const message = data.errors?.[0]?.message || 'Failed to fetch from AniList';
-    if (response.status === 429) {
-      throw new AniListRateLimitError(message, rateLimit, response.status);
-    }
-    throw new Error(message);
   }
-
-  return { data: data.data as T, rateLimit };
+  throw lastError;
 }
 
 function parseRateLimitInfo(headers: Headers): AniListRateLimitInfo {

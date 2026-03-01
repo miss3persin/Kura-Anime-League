@@ -269,7 +269,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                     />
                                     <div className="overflow-hidden">
                                         <p className="text-[10px] font-black uppercase text-[var(--foreground)] truncate">{profile?.username || user.user_metadata.username || user.email.split('@')[0]}</p>
-                                        <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">Elite Member</p>
+                                        <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">League Member</p>
                                     </div>
                                 </div>
                                 <button

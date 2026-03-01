@@ -3,6 +3,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 interface ModalProps {
     isOpen: boolean;
@@ -10,25 +16,26 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     showClose?: boolean;
+    maxWidth?: string;
 }
 
-export const Modal = ({ isOpen, onClose, title, children, showClose = true }: ModalProps) => {
+export const Modal = ({ isOpen, onClose, title, children, showClose = true, maxWidth = "max-w-lg" }: ModalProps) => {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center p-6">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-md"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     />
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative bg-[var(--surface)] border border-[var(--border)] w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl overflow-hidden"
+                        className={cn("relative bg-[var(--surface)] border border-[var(--border)] w-full rounded-[2.5rem] p-10 shadow-2xl overflow-hidden", maxWidth)}
                     >
                         <div className="absolute top-0 right-0 p-8">
                             {showClose && (

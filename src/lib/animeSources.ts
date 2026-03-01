@@ -3,11 +3,13 @@ import { logApiRateLimit } from '@/lib/apiRateLimit';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { fetchKitsuAnimeById, normalizeKitsuStatus, searchKitsuAnime } from '@/lib/kitsu';
 import { findMappingsForIds, upsertIdentityMapping } from '@/lib/identityMapping';
+import { fetchMalAnimeById, normalizeJikanStatus, searchMalAnime, JikanAnimeResult } from '@/lib/jikan';
 
 interface AnimeCacheRow {
   id: number;
   status?: string | null;
   kitsu_id?: number | null;
+  mal_id?: number | null;
   title_romaji?: string | null;
   title_english?: string | null;
   average_score?: number | null;
@@ -20,7 +22,7 @@ export interface AiringStatus {
   trending?: number;
   averageScore?: number | null;
   popularity?: number | null;
-  source: 'AniList' | 'Kitsu' | 'Cache' | 'LiveChart';
+  source: 'AniList' | 'Kitsu' | 'Jikan' | 'Cache' | 'LiveChart';
 }
 
 interface KitsuAnimePayload {
@@ -102,20 +104,20 @@ export async function fetchAiringStatuses(ids: number[]): Promise<Record<number,
       message: 'AniList primary path used',
       metadata: { idsCount: ids.length, source: 'AniList' }
     }).catch(() => undefined);
-    } catch (error) {
-      if (error instanceof AniListRateLimitError) {
-        console.warn('AniList rate limit reached, falling back to Kitsu/cache', error);
-        statuses = await fetchFallbackStatuses(ids);
-      } else {
-        throw error;
-      }
+  } catch (error) {
+    if (error instanceof AniListRateLimitError) {
+      console.warn('AniList rate limit reached, falling back to Kitsu/Jikan/cache', error);
+      statuses = await fetchFallbackStatuses(ids);
+    } else {
+      throw error;
     }
+  }
 
-    const missingIds = ids.filter(id => !statuses[id]);
-    if (missingIds.length) {
-      const fallback = await fetchFallbackStatuses(missingIds);
-      statuses = { ...statuses, ...fallback };
-    }
+  const missingIds = ids.filter(id => !statuses[id]);
+  if (missingIds.length) {
+    const fallback = await fetchFallbackStatuses(missingIds);
+    statuses = { ...statuses, ...fallback };
+  }
 
   await applyLiveChartOverrides(ids, statuses);
   return statuses;
@@ -125,7 +127,7 @@ async function fetchFallbackStatuses(ids: number[]): Promise<Record<number, Airi
   const statuses: Record<number, AiringStatus> = {};
   const { data: rows } = await supabaseAdmin
     .from('anime_cache')
-    .select('id, status, kitsu_id, title_romaji, title_english, average_score')
+    .select('id, status, kitsu_id, mal_id, title_romaji, title_english, average_score')
     .in('id', ids);
 
   if (!rows || rows.length === 0) return statuses;
@@ -133,33 +135,43 @@ async function fetchFallbackStatuses(ids: number[]): Promise<Record<number, Airi
   const mappingMap = await findMappingsForIds(rows.map((row) => row.id));
 
   const kitsuCache = new Map<number, KitsuAnimePayload>();
+  const jikanCache = new Map<number, JikanAnimeResult>();
 
   for (const row of rows) {
     const mapping = mappingMap[row.id];
-    if (mapping?.kitsu_id) {
-      row.kitsu_id = mapping.kitsu_id;
-    }
+    if (mapping?.kitsu_id) row.kitsu_id = mapping.kitsu_id;
+    if (mapping?.mal_id) row.mal_id = mapping.mal_id;
 
     const cacheStatus = buildCacheStatus(row);
 
-    const withMapping = await ensureKitsuId(row);
-    if (withMapping.kitsu_id) {
-      let kitsuPayload = kitsuCache.get(withMapping.kitsu_id);
+    // 1. Try Kitsu
+    const withKitsu = await ensureKitsuId(row);
+    if (withKitsu.kitsu_id) {
+      let kitsuPayload = kitsuCache.get(withKitsu.kitsu_id);
       if (!kitsuPayload) {
-        try {
-          kitsuPayload = await fetchKitsuAnimeById(withMapping.kitsu_id) as KitsuAnimePayload;
-          kitsuCache.set(withMapping.kitsu_id, kitsuPayload);
-        } catch (err) {
-          console.warn(`Failed to fetch Kitsu anime ${withMapping.kitsu_id}`, err);
-        }
+        kitsuPayload = (await fetchKitsuAnimeById(withKitsu.kitsu_id).catch(() => null)) as KitsuAnimePayload;
+        if (kitsuPayload) kitsuCache.set(withKitsu.kitsu_id, kitsuPayload);
       }
-
       if (kitsuPayload) {
         const normalized = normalizeKitsuStatus(kitsuPayload, row.id);
         if (normalized) {
           statuses[row.id] = normalized;
           continue;
         }
+      }
+    }
+
+    // 2. Try Jikan (MAL)
+    const withMal = await ensureMalId(row);
+    if (withMal.mal_id) {
+      let jikanPayload = jikanCache.get(withMal.mal_id);
+      if (!jikanPayload) {
+        jikanPayload = await fetchMalAnimeById(withMal.mal_id).catch(() => null);
+        if (jikanPayload) jikanCache.set(withMal.mal_id, jikanPayload);
+      }
+      if (jikanPayload) {
+        statuses[row.id] = normalizeJikanStatus(jikanPayload, row.id);
+        continue;
       }
     }
 
@@ -191,7 +203,7 @@ async function applyLiveChartOverrides(ids: number[], statuses: Record<number, A
       trending: existing?.trending ?? 0,
       averageScore: existing?.averageScore ?? null,
       popularity: existing?.popularity ?? null,
-      source: entry.source ?? 'LiveChart'
+      source: (entry.source as AiringStatus['source']) ?? 'LiveChart'
     };
   }
 }
@@ -229,6 +241,25 @@ async function ensureKitsuId(row: AnimeCacheRow): Promise<AnimeCacheRow> {
     }
   }
 
+  await sleep(SEARCH_DELAY_MS);
+  return row;
+}
+
+async function ensureMalId(row: AnimeCacheRow): Promise<AnimeCacheRow> {
+  if (row.mal_id) return row;
+  const query = row.title_romaji || row.title_english;
+  if (!query) return row;
+
+  const result = await searchMalAnime(query);
+  if (result?.mal_id) {
+    await supabaseAdmin.from('anime_cache').update({ mal_id: result.mal_id }).eq('id', row.id);
+    await upsertIdentityMapping({
+      anilist_id: row.id,
+      mal_id: result.mal_id,
+      title: row.title_romaji ?? row.title_english ?? result.title
+    });
+    row.mal_id = result.mal_id;
+  }
   await sleep(SEARCH_DELAY_MS);
   return row;
 }

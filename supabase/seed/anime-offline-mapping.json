@@ -1,5 +1,14 @@
 [
-  { "anilist_id": 1, "kitsu_id": 101, "mal_id": 201, "title": "Sample Hero Anime" },
-  { "anilist_id": 2, "kitsu_id": 102, "mal_id": 202, "title": "Sample Slice of Life" },
-  { "anilist_id": 3, "kitsu_id": 103, "mal_id": 203, "title": "Sample Mecha Adventure" }
+  {
+    "anilist_id": 187264,
+    "kitsu_id": 201,
+    "mal_id": 301,
+    "title": "Sample Hero Anime"
+  },
+  {
+    "anilist_id": 163144,
+    "kitsu_id": 202,
+    "mal_id": 302,
+    "title": "Sample Slice of Life"
+  }
 ]

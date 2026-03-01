@@ -21,36 +21,54 @@ async function kitsuFetch(path: string, options: KitsuFetchOptions) {
     }
   }
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Accept: 'application/vnd.api+json',
-    },
-  });
+  const maxRetries = 3;
+  let lastError: any = null;
 
-  const body = await response.json();
-  const rateLimit = parseKitsuRateLimit(response.headers);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.api+json',
+        },
+      });
 
-  await logApiRateLimit({
-    source: 'Kitsu',
-    endpoint: options.endpoint,
-    status: response.status,
-    success: response.ok,
-    limit: rateLimit.limit,
-    remaining: rateLimit.remaining,
-    resetAt: rateLimit.reset ? new Date(rateLimit.reset * 1000).toISOString() : null,
-    message: response.ok ? 'ok' : body.errors?.[0]?.detail,
-    metadata: {
-      path,
-      params: options.params ?? null,
-    },
-  });
+      const body = await response.json();
+      const rateLimit = parseKitsuRateLimit(response.headers);
 
-  if (!response.ok) {
-    throw new Error(body.errors?.[0]?.detail || 'Kitsu fetch failed');
+      await logApiRateLimit({
+        source: 'Kitsu',
+        endpoint: options.endpoint,
+        status: response.status,
+        success: response.ok,
+        limit: rateLimit.limit,
+        remaining: rateLimit.remaining,
+        resetAt: rateLimit.reset ? new Date(rateLimit.reset * 1000).toISOString() : null,
+        message: response.ok ? 'ok' : body.errors?.[0]?.detail,
+        metadata: {
+          path,
+          params: options.params ?? null,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(body.errors?.[0]?.detail || 'Kitsu fetch failed');
+      }
+
+      return body;
+    } catch (error: any) {
+      lastError = error;
+      const isNetworkError = error.message?.includes('fetch failed') || error.code === 'EAI_AGAIN';
+      if (isNetworkError && attempt < maxRetries) {
+        const delay = attempt * 1000;
+        console.warn(`Kitsu fetch attempt ${attempt} failed (DNS/Network). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
   }
-
-  return body;
+  throw lastError;
 }
 
 function parseKitsuRateLimit(headers: Headers): KitsuRateLimitInfo {

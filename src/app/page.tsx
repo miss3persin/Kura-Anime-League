@@ -56,6 +56,7 @@ export default function Home() {
   const router = useRouter();
   const [carouselAnime, setCarouselAnime] = useState<Anime[]>([]);
   const [trendingShows, setTrendingShows] = useState<Anime[]>([]);
+  const [marketPulseAnime, setMarketPulseAnime] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -76,23 +77,58 @@ export default function Home() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('anime_cache')
-          .select('*')
-          .limit(15)
-          .order('id', { ascending: false });
-
-        if (error) throw error;
-
-        if (data) {
-          const withBanners = data.filter(a => a.banner_image).slice(0, 5);
-          setCarouselAnime(withBanners.length > 2 ? withBanners : data.slice(0, 5));
-          setTrendingShows(data.slice(5, 8));
+        const res = await fetch("/api/seasons/current");
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(`API error: ${res.status} - ${errBody.error || res.statusText}`);
         }
+        const sInfo = await res.json();
+        
+        // Target Season Logic: Prioritize upcoming/draft season for main content
+        const targetSeasonId = sInfo.upcomingSeason?.id || sInfo.activeSeason?.id;
+        const activeSeasonId = sInfo.activeSeason?.id;
+
+        // 1. Fetch Main Content (Carousel & Trending) - focused on the "Target" season
+        let mainQuery = supabase.from('anime_cache').select('*');
+        if (targetSeasonId) {
+          mainQuery = mainQuery.eq('season_uuid', targetSeasonId);
+        }
+        const { data: mainData, error: mainError } = await mainQuery
+          .limit(30)
+          .order('hype_score', { ascending: false });
+
+        if (mainError) throw mainError;
+
+        // 2. Fetch Market Pulse Content (Mix of active and upcoming)
+        let pulseQuery = supabase.from('anime_cache').select('*');
+        if (activeSeasonId && targetSeasonId && activeSeasonId !== targetSeasonId) {
+            pulseQuery = pulseQuery.in('season_uuid', [activeSeasonId, targetSeasonId]);
+        } else if (targetSeasonId) {
+            pulseQuery = pulseQuery.eq('season_uuid', targetSeasonId);
+        }
+        const { data: pulseData } = await pulseQuery
+          .limit(10)
+          .order('hype_change', { ascending: false });
+
+        if (mainData) {
+          const withBanners = mainData.filter(a => a.banner_image || a.external_banner_url).slice(0, 10);
+          setCarouselAnime(withBanners.length > 2 ? withBanners : mainData.slice(0, 10));
+          setTrendingShows(mainData.slice(0, 12));
+        }
+        if (pulseData) {
+            setMarketPulseAnime(pulseData);
+        }
+        
         setDbError(null);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unable to reach the database.";
-        console.error('Failed to sync anime cache:', error);
+      } catch (err: unknown) {
+        let message = "System initialization error.";
+        if (err instanceof Error) {
+            message = err.message;
+            console.error('Detailed Debug Info:', JSON.stringify({
+                message: err.message,
+                stack: err.stack,
+            }, null, 2));
+        }
         setDbError(message);
       } finally {
         setLoading(false);
@@ -166,6 +202,84 @@ export default function Home() {
 
   const nextSlide = () => setActiveIndex(prev => (prev + 1) % carouselAnime.length);
   const prevSlide = () => setActiveIndex(prev => (prev - 1 + carouselAnime.length) % carouselAnime.length);
+
+  const [topPerformers, setTopPerformers] = useState<{ rank: number; name: string; kp: string; avatar: string }[]>([]);
+  const [topCharacters, setTopCharacters] = useState<{ id: number; name: string; image: string; role: string; favorites: number }[]>([]);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username, total_kp, avatar_url')
+          .order('total_kp', { ascending: false })
+          .limit(4);
+
+        if (error) throw error;
+        if (data) {
+          setTopPerformers(data.map((p, i) => ({
+            rank: i + 1,
+            name: p.username || 'Anonymous',
+            kp: p.total_kp.toLocaleString(),
+            avatar: p.avatar_url || `7x/avataaars/svg?seed=${p.username || i}`
+          })));
+        }
+      } catch (err) {
+        console.error("Failed to fetch leaderboard", err);
+      }
+    };
+
+    const fetchTopCharacters = async () => {
+      try {
+        // First get current/upcoming season
+        const res = await fetch("/api/seasons/current");
+        let targetSeasonId = null;
+        if (res.ok) {
+            const sInfo = await res.json();
+            targetSeasonId = sInfo.activeSeason?.id || sInfo.upcomingSeason?.id;
+        }
+
+        if (targetSeasonId) {
+          // Get anime for this season
+          const { data: animeData } = await supabase
+            .from('anime_cache')
+            .select('id')
+            .eq('season_uuid', targetSeasonId);
+          
+          if (animeData && animeData.length > 0) {
+            const animeIds = animeData.map(a => a.id);
+            const { data, error } = await supabase
+              .from('character_cache')
+              .select('*')
+              .in('anime_id', animeIds)
+              .order('favorites', { ascending: false })
+              .limit(3);
+
+            if (!error && data && data.length > 0) {
+              setTopCharacters(data);
+              return;
+            }
+          }
+        }
+
+        // Fallback to global top characters if season filter fails
+        const { data, error } = await supabase
+          .from('character_cache')
+          .select('*')
+          .order('favorites', { ascending: false })
+          .limit(3);
+
+        if (!error && data) {
+          setTopCharacters(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch top characters:", err);
+      }
+    };
+
+    fetchLeaderboard();
+    fetchTopCharacters();
+  }, []);
 
   return (
     <AppShell>
@@ -315,9 +429,9 @@ export default function Home() {
                 className="absolute inset-0"
               >
                 <img
-                  src={carouselAnime[activeIndex].banner_image || carouselAnime[activeIndex].cover_image}
+                  src={carouselAnime[activeIndex].external_banner_url || carouselAnime[activeIndex].banner_image || carouselAnime[activeIndex].cover_image}
                   className="w-full h-full object-cover brightness-[0.4] transition-transform duration-[10s] scale-100 group-hover:scale-105"
-                  alt={`Promotional banner for ${carouselAnime[activeIndex].title_romaji}`}
+                  alt={`Promotional banner for ${carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-12 md:p-20 flex flex-col justify-end">
                   <motion.div
@@ -330,9 +444,12 @@ export default function Home() {
                       <span className="bg-accent text-white px-4 py-1.5 text-[10px] font-black uppercase rounded-full shadow-lg shadow-accent/20">Featured</span>
                       <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Kura Exclusive Choice</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis flex-shrink-0">
-                      {carouselAnime[activeIndex].title_romaji}
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white uppercase italic font-outfit leading-none line-clamp-2 overflow-hidden text-ellipsis flex-shrink-0" title={carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}>
+                      {carouselAnime[activeIndex].title_english || carouselAnime[activeIndex].title_romaji}
                     </h1>
+                    <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] opacity-60 leading-none truncate flex-shrink-0">
+                      {carouselAnime[activeIndex].title_english ? carouselAnime[activeIndex].title_romaji : 'Seasonal Spotlight'}
+                    </p>
                     <p className="text-gray-300 text-xs md:text-sm font-medium max-w-xl line-clamp-2 opacity-80 leading-relaxed uppercase tracking-widest font-sans flex-shrink-0">
                       {carouselAnime[activeIndex].description?.replace(/<[^>]*>/g, '') || "Experience the most anticipated journey of the season first on KAL."}
                     </p>
@@ -411,16 +528,20 @@ export default function Home() {
                     >
                       <div className="aspect-[16/10] overflow-hidden">
                         <img
-                          src={show.banner_image || show.cover_image}
+                          src={show.external_banner_url || show.banner_image || show.cover_image}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-[0.8] group-hover:brightness-100"
-                          alt={`Trending anime: ${show.title_romaji}`}
+                          alt={`Trending anime: ${show.title_english || show.title_romaji}`}
                         />
                       </div>
                       <div className="p-8 space-y-4">
                         <div className="flex justify-between items-start">
                           <div className="space-y-1 max-w-[70%]">
-                            <h3 className="text-xl font-black text-[var(--foreground)] uppercase tracking-tight truncate leading-tight">{show.title_romaji}</h3>
-                            <p className="text-[var(--muted)] text-[10px] font-bold uppercase tracking-widest truncate">{show.title_english || 'Original Series'}</p>
+                            <h3 className="text-xl font-black text-[var(--foreground)] uppercase tracking-tight truncate leading-tight" title={show.title_english || show.title_romaji}>
+                              {show.title_english || show.title_romaji}
+                            </h3>
+                            <p className="text-[var(--muted)] text-[10px] font-bold uppercase tracking-widest truncate">
+                              {show.title_english ? show.title_romaji : 'Original Series'}
+                            </p>
                           </div>
                           <div className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-[9px] font-black">{show.cost_kp} KP</div>
                         </div>
@@ -491,17 +612,21 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] divide-y divide-[var(--border)] overflow-hidden shadow-xl">
-                    {carouselAnime.slice(0, 5).map((anime, i) => (
-                      <div key={i} className="p-5 flex items-center justify-between hover:bg-[var(--surface-hover)] transition-all group">
-                        <div className="flex items-center gap-4">
-                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all" />
-                          <div>
-                            <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{anime.title_romaji}</p>
-                            <p className="text-[8px] font-black text-accent uppercase tracking-widest">Active Market</p>
+                    {marketPulseAnime.slice(0, 5).map((anime, i) => (
+                      <div key={i} className="p-5 flex items-center gap-4 hover:bg-[var(--surface-hover)] transition-all group">
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-10 h-10 rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate" title={anime.title_english || anime.title_romaji}>
+                              {anime.title_english || anime.title_romaji}
+                            </p>
+                            <p className="text-[8px] font-black text-accent uppercase tracking-widest truncate opacity-70">
+                              {anime.title_english ? anime.title_romaji : 'Active Market'}
+                            </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-[11px] font-black text-[var(--foreground)] italic">{anime.cost_kp} KP</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[11px] font-black text-[var(--foreground)] italic leading-none mb-1">{anime.cost_kp} KP</p>
                           <p className={`text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {anime.hype_change >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                             {anime.hype_change > 0 ? '+' : ''}{anime.hype_change || 0}%
@@ -522,7 +647,7 @@ export default function Home() {
           </>
         )}
 
-        {showLeaderboard && (
+        {showLeaderboard && topPerformers.length > 0 && (
           <>
             {/* Leaderboard Preview & Season Highlights */}
             <div className="space-y-8 pt-10">
@@ -534,15 +659,10 @@ export default function Home() {
                 <button onClick={() => router.push('/rankings')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">View Global Rankings</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                  { rank: 1, name: "KuroSama", kp: "450,230", avatar: "7x/avataaars/svg?seed=Kuro" },
-                  { rank: 2, name: "GojoSatoru", kp: "420,100", avatar: "7x/avataaars/svg?seed=Gojo" },
-                  { rank: 3, name: "MakimaFan", kp: "392,500", avatar: "7x/avataaars/svg?seed=Makima" },
-                  { rank: 4, name: "Tanjiro", kp: "385,000", avatar: "7x/avataaars/svg?seed=Tanjiro" },
-                ].map((usr, i) => (
+                {topPerformers.map((usr, i) => (
                   <div key={i} className="bg-[var(--surface-hover)] p-6 rounded-[2.5rem] border border-[var(--border)] flex items-center gap-4 group hover:border-accent/30 transition-all cursor-default">
                     <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-xs">{usr.rank}</div>
-                    <img src={`https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-10 h-10 rounded-full border border-accent/20" />
+                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-10 h-10 rounded-full border border-accent/20" />
                     <div>
                       <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{usr.name}</p>
                       <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{usr.kp} Total KP</p>
@@ -554,25 +674,35 @@ export default function Home() {
           </>
         )}
 
-        {/* Features Comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-10">
-          {[
-            { id: 'hype', icon: Zap, color: 'accent', title: 'Hype Points', text: 'Earn weekly KP by drafting shows that top the global hype charts.', fill: true },
-            { id: 'badge', icon: Star, color: 'pink-500', title: 'Legendary Badges', text: 'Complete seasonal challenges to unlock rare animated profile badges.', fill: true },
-            { id: 'tier', icon: TrendingUp, color: 'yellow-500', title: 'Tier Climb', text: "Ascend from Bronze to Shogun by predicting the season's biggest sleepers." }
-          ].map((item) => (
-            <div key={item.id} className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl"
-                style={{ backgroundColor: `rgba(var(--${item.color}-rgb, ${item.color === 'accent' ? '174,0,255' : '150,150,150'}), 0.1)`, color: item.color === 'accent' ? 'var(--accent)' : item.color }}
-              >
-                <item.icon size={28} className={item.fill ? `fill-current` : ''} />
-              </div>
-              <h3 className="text-3xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)]">{item.title}</h3>
-              <p className="text-[var(--muted)] text-sm font-medium leading-relaxed uppercase tracking-wider text-[10px]">{item.text}</p>
+        {/* Top Characters / Recruits section */}
+        <div className="space-y-8 pt-10 pb-20">
+          <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Star Power</p>
+              <h2 className="text-4xl font-black uppercase italic tracking-tighter font-outfit leading-none text-[var(--foreground)]">Top Seasonal Recruits</h2>
             </div>
-          ))}
+            <button onClick={() => router.push('/draft')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">Draft now</button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {topCharacters.map((char) => (
+              <div key={char.id} className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col md:flex-row gap-8 items-center">
+                <div className="w-32 h-32 rounded-3xl overflow-hidden flex-shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
+                  <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                </div>
+                <div className="space-y-3 text-center md:text-left">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent">{char.role}</p>
+                    <h3 className="text-2xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)]">{char.name}</h3>
+                  </div>
+                  <p className="text-[var(--muted)] text-sm font-medium leading-relaxed uppercase tracking-wider text-[10px]">
+                    Recruited by thousands of managers this season with {char.favorites.toLocaleString()} favorites.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
     </AppShell>
   );

@@ -19,7 +19,7 @@ interface Prediction {
     is_resolved: boolean;
     is_correct: boolean;
     kp_earned: number;
-    anime?: { title_romaji: string; cover_image: string };
+    anime?: { title_romaji: string; title_english?: string; cover_image: string };
 }
 
 interface User {
@@ -91,9 +91,10 @@ export default function PredictPage() {
 
         const { data: preds } = await supabase
             .from('predictions')
-            .select('*, anime:anime_cache(title_romaji, cover_image)')
+            .select('*, anime:anime_cache(title_romaji, title_english, cover_image)')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false });
+
         if (preds) setPredictions(preds as unknown as Prediction[]);
 
         const { data: trending } = await supabase
@@ -245,9 +246,11 @@ export default function PredictPage() {
                                                 </span>
                                                 <span className="text-[10px] font-black text-[var(--muted)] italic group-hover:text-[var(--foreground)] transition-colors">{pred.kp_wager} KP</span>
                                             </div>
-                                            <h4 className="text-[10px] font-black uppercase truncate text-[var(--foreground)] italic">{pred.anime?.title_romaji}</h4>
+                                            <h4 className="text-[10px] font-black uppercase truncate text-[var(--foreground)] italic" title={pred.anime?.title_english || pred.anime?.title_romaji}>
+                                                {pred.anime?.title_english || pred.anime?.title_romaji}
+                                            </h4>
                                             <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest line-clamp-1 italic">
-                                                {pred.prediction_type.replace('_', ' ')} {pred.predicted_value}
+                                                {pred.anime?.title_english ? pred.anime?.title_romaji : pred.prediction_type.replace('_', ' ')}
                                             </p>
                                             {pred.is_resolved && (
                                                 <div className={`mt-2 flex items-center gap-2 ${pred.is_correct ? 'text-green-500' : 'text-red-500'}`}>
@@ -279,7 +282,7 @@ export default function PredictPage() {
                                         onChange={e => setSelectedAnimeId(parseInt(e.target.value))}
                                         className="w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-accent"
                                     >
-                                        {trendingAnime.map(a => <option key={a.id} value={a.id}>{a.title_romaji}</option>)}
+                                        {trendingAnime.map(a => <option key={a.id} value={a.id}>{a.title_english || a.title_romaji}</option>)}
                                     </select>
                                 </div>
 
