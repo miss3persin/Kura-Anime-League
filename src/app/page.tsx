@@ -608,7 +608,7 @@ export default function Home() {
                         </div>
                       </div>
                       <NeonButton onClick={() => router.push('/draft')} className="w-full md:w-fit py-4 px-10">
-                        Initialize Draft
+                        Start Draft
                       </NeonButton>
                     </div>
                   </div>
@@ -669,14 +669,14 @@ export default function Home() {
                 </div>
                 <button onClick={() => router.push('/rankings')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">View Global Rankings</button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                 {topPerformers.map((usr, i) => (
-                  <div key={i} className="bg-[var(--surface-hover)] p-6 rounded-[2.5rem] border border-[var(--border)] flex items-center gap-4 group hover:border-accent/30 transition-all cursor-default">
-                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-xs">{usr.rank}</div>
-                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-10 h-10 rounded-full border border-accent/20" />
-                    <div>
-                      <p className="text-[10px] font-black text-[var(--foreground)] uppercase truncate w-24">{usr.name}</p>
-                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">{usr.kp} Total KP</p>
+                  <div key={i} className="bg-[var(--surface-hover)] px-4 py-5 rounded-[2rem] border border-[var(--border)] flex items-center gap-3 group hover:border-accent/30 transition-all cursor-default min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[10px] flex-shrink-0 border border-accent/10">{usr.rank}</div>
+                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-9 h-9 rounded-full border border-accent/20 flex-shrink-0" />
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <p className="text-[11px] font-black text-[var(--foreground)] uppercase truncate" title={usr.name}>{usr.name}</p>
+                      <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{usr.kp} Total KP</p>
                     </div>
                   </div>
                 ))}
@@ -694,22 +694,22 @@ export default function Home() {
             </div>
             <button onClick={() => router.push('/draft')} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] hover:underline cursor-pointer">Draft now</button>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {topCharacters.map((char) => (
               <div 
                 key={char.id} 
                 onClick={() => setSelectedCharacter(char)}
-                className="bg-[var(--surface)] border border-[var(--border)] p-10 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col md:flex-row gap-8 items-center cursor-pointer"
+                className="bg-[var(--surface)] border border-[var(--border)] p-8 rounded-[2.5rem] space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col items-center text-center cursor-pointer min-w-0"
               >
-                <div className="w-32 h-32 rounded-3xl overflow-hidden flex-shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
+                <div className="w-28 h-28 rounded-3xl overflow-hidden flex-shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-2xl">
                   <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                 </div>
-                <div className="space-y-3 text-center md:text-left">
+                <div className="space-y-3 w-full">
                   <div className="space-y-1">
                     <p className="text-[9px] font-black uppercase tracking-[0.4em] text-accent">{char.role}</p>
-                    <h3 className="text-2xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)] truncate w-full">{char.name}</h3>
+                    <h3 className="text-xl font-black uppercase italic leading-none font-outfit text-[var(--foreground)] truncate w-full px-2" title={char.name}>{char.name}</h3>
                   </div>
-                  <p className="text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider text-[10px]">
+                  <p className="text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider text-[10px] line-clamp-2 px-2">
                     Featured in <span className="text-accent">{char.anime_title}</span> with {char.favorites.toLocaleString()} favorites.
                   </p>
                 </div>
