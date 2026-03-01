@@ -9,8 +9,8 @@ interface KitsuRateLimitInfo {
 }
 
 interface KitsuFetchOptions {
-  endpoint: string;
   params?: Record<string, string>;
+  endpoint: string;
 }
 
 async function kitsuFetch(path: string, options: KitsuFetchOptions) {
@@ -33,7 +33,7 @@ async function kitsuFetch(path: string, options: KitsuFetchOptions) {
         },
       });
 
-      const body = await response.json() as { data?: any; errors?: { detail: string }[] };
+      const body = await response.json() as { data?: unknown; errors?: { detail: string }[] };
       const rateLimit = parseKitsuRateLimit(response.headers);
 
       await logApiRateLimit({
@@ -78,74 +78,80 @@ function parseKitsuRateLimit(headers: Headers): KitsuRateLimitInfo {
   const reset = Number(headers.get('x-ratelimit-reset'));
 
   return {
-    limit: Number.isNaN(limit) ? undefined : limit,
-    remaining: Number.isNaN(remaining) ? undefined : remaining,
-    reset: Number.isNaN(reset) ? undefined : reset,
+    limit: isNaN(limit) ? undefined : limit,
+    remaining: isNaN(remaining) ? undefined : remaining,
+    reset: isNaN(reset) ? undefined : reset,
   };
 }
 
-export async function searchKitsuAnime(query: string) {
+export interface KitsuAnimeResult {
+  id: string;
+  status: 'RELEASING' | 'FINISHED' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS';
+  averageScore?: number;
+  popularity?: number;
+  trending?: number;
+  nextAiringEpisode?: {
+    airingAt: string;
+  };
+  source: 'Kitsu';
+}
+
+export async function searchKitsuAnime(query: string): Promise<KitsuAnimeResult | null> {
   if (!query) return null;
-  const sanitized = query.replace(/[^a-zA-Z0-9\s:-]/g, ' ').trim();
-  if (!sanitized) return null;
 
-  const payload = await kitsuFetch('anime', {
-    endpoint: 'kitsu-search',
-    params: {
-      'filter[text]': sanitized,
-      'page[limit]': '1',
-    },
-  });
+  try {
+    const body = await kitsuFetch('anime', {
+      params: {
+        'filter[text]': query,
+        'page[limit]': '1',
+      },
+      endpoint: 'anime_search',
+    }) as { data?: { id: string; attributes: Record<string, unknown> }[] };
 
-  if (!Array.isArray(payload.data) || payload.data.length === 0) {
+    if (!body.data || body.data.length === 0) return null;
+
+    const entry = body.data[0];
+    return mapKitsuAnime(entry.id, entry.attributes);
+  } catch (error) {
+    console.error('Kitsu search failed:', error);
     return null;
   }
-
-  return payload.data[0];
 }
 
-export async function fetchKitsuAnimeById(kitsuId: number) {
-  const payload = await kitsuFetch(`anime/${kitsuId}`, {
-    endpoint: 'kitsu-anime-detail',
-  });
-  return payload.data;
+export async function fetchKitsuAnimeById(id: string): Promise<KitsuAnimeResult | null> {
+  try {
+    const body = await kitsuFetch(`anime/${id}`, {
+      endpoint: 'anime_by_id',
+    }) as { data?: { id: string; attributes: Record<string, unknown> } };
+
+    if (!body.data) return null;
+
+    return mapKitsuAnime(body.data.id, body.data.attributes);
+  } catch (error) {
+    console.error('Kitsu fetch failed:', error);
+    return null;
+  }
 }
 
-export function mapKitsuStatus(raw: string | null | undefined) {
-  switch (raw?.toLowerCase()) {
+function mapKitsuStatus(status: string): KitsuAnimeResult['status'] {
+  switch (status) {
     case 'current':
-    case 'airing':
       return 'RELEASING';
-    case 'upcoming':
-    case 'tba':
-      return 'NOT_YET_RELEASED';
-    case 'hiatus':
-      return 'HIATUS';
     case 'finished':
       return 'FINISHED';
+    case 'upcoming':
+      return 'NOT_YET_RELEASED';
+    case 'unreleased':
+      return 'NOT_YET_RELEASED';
     default:
       return 'FINISHED';
   }
 }
 
-interface KitsuAnimeRecord {
-  id: string;
-  attributes: {
-    averageRating: string | null;
-    popularityRank: number | null;
-    nextRelease: string | null;
-    status: string | null;
-  };
-}
-
-export function normalizeKitsuStatus(record: KitsuAnimeRecord, id: number) {
-  const attributes = record?.attributes;
-  if (!attributes) return null;
-
-  const averageRating = attributes.averageRating ? Math.round(Number(attributes.averageRating)) : null;
-  const popularity = attributes.popularityRank ? Math.max(0, 1000 - Number(attributes.popularityRank)) : null;
-  const nextRelease = attributes.nextRelease ? Math.floor(new Date(attributes.nextRelease).getTime() / 1000) : undefined;
-
+function mapKitsuAnime(id: string, attributes: Record<string, unknown>): KitsuAnimeResult {
+  const averageRating = attributes.averageRating ? parseFloat(attributes.averageRating) : undefined;
+  const popularity = attributes.userCount;
+  const nextRelease = attributes.nextRelease;
   const status = mapKitsuStatus(attributes.status);
 
   return {

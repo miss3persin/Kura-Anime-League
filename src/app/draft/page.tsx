@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { NeonButton } from "@/components/ui/neon-button";
 import {
-  Zap,
+  Zap, CheckCircle,
   Loader2, Search, RefreshCw,
   Heart, LayoutGrid, Star, Info
 } from "lucide-react";

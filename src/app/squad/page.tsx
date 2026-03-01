@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import {
     Crown, Zap, ArrowLeftRight, TrendingUp, TrendingDown,
-    Loader2, Star, Heart, RefreshCw, Info, Plus
+    Loader2, Star, Heart, RefreshCw, Info, Plus, Shield, CheckCircle, AlertCircle
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
