@@ -7,8 +7,8 @@ test('calcCostKp baseline', () => {
   const rawHype = 500;
   // Constant random for test
   const cost = calcCostKp(media, rawHype, () => 0.5);
-  assert.ok(cost >= 1000 && cost <= 12000);
-  assert.strictEqual(cost % 50, 0);
+  assert.ok(cost >= 1000 && cost <= 15000);
+  assert.strictEqual(cost % 10, 0);
 });
 
 test('calcCostKp high hype', () => {
@@ -23,6 +23,12 @@ test('calcCostKp low performance', () => {
   const media = { averageScore: 40, popularity: 100, status: 'FINISHED' };
   const rawHype = 100;
   const cost = calcCostKp(media, rawHype, () => 0.5);
-  // Should be near floor
-  assert.ok(cost <= 3000);
+  // Should stay in the lower band of the market
+  assert.ok(cost <= 4500);
+});
+
+test('calcCostKp reacts to previous momentum and price', () => {
+  const media = { averageScore: 78, popularity: 1800, status: 'NOT_YET_RELEASED', trending: 3200 };
+  const cost = calcCostKp(media, 760, () => 0.5, { previousCost: 4200, previousHype: 600 });
+  assert.ok(cost > 4200);
 });

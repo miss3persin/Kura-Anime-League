@@ -203,7 +203,7 @@ export default function RankingsPage() {
                                 {others.length === 0 && (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-[10px] font-black uppercase text-[var(--muted)] tracking-widest">
-                                            Awaiting more challengers...
+                                            More players will appear here soon.
                                         </td>
                                     </tr>
                                 )}
@@ -267,7 +267,7 @@ export default function RankingsPage() {
                     <div>
                         <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Standings</h1>
                         <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
-                            The definitive global hierarchy
+                            See how everyone ranks
                         </p>
                     </div>
                 </div>
@@ -291,7 +291,7 @@ export default function RankingsPage() {
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-xl bg-accent/5 border border-accent/10">
                             <Zap size={12} className="text-accent shrink-0" />
-                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-accent">Sync active</span>
+                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-accent">Live updates</span>
                         </div>
                     </div>
                 </div>
@@ -299,7 +299,7 @@ export default function RankingsPage() {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-32 md:py-40 space-y-4">
                         <Loader2 className="animate-spin text-accent" size={40} />
-                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Recalculating...</p>
+                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Loading rankings...</p>
                     </div>
                 ) : (
                     <AnimatePresence mode="wait">
@@ -315,7 +315,7 @@ export default function RankingsPage() {
                                 seasonScores.length === 0 ? (
                                     <div className="py-32 md:py-40 text-center bg-[var(--surface-hover)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-8">
                                         <Star size={32} className="mx-auto text-[var(--border)] mb-4" />
-                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Seasonal Data Synchronizing...</p>
+                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Season data is loading...</p>
                                     </div>
                                 ) : (
                                     renderPodiumAndTable(seasonData as PlayerRow[])
@@ -325,7 +325,7 @@ export default function RankingsPage() {
                                 weeklyScores.length === 0 ? (
                                     <div className="py-32 md:py-40 text-center bg-[var(--surface-hover)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-8">
                                         <TrendingUp size={32} className="mx-auto text-[var(--border)] mb-4" />
-                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Awaiting Results...</p>
+                                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">Results are not available yet.</p>
                                     </div>
                                 ) : (
                                     renderPodiumAndTable(weeklyData as PlayerRow[])
@@ -338,3 +338,4 @@ export default function RankingsPage() {
         </AppShell>
     );
 }
+

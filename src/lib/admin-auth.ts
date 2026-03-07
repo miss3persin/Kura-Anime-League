@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAdminAccessGrantByEmail } from "@/lib/admin-access";
 import type { User } from "@supabase/supabase-js";
 
 const parseList = (value: string | undefined) =>
@@ -55,8 +56,10 @@ export async function requireAdmin(request: Request) {
   const isEmailAdmin = normalizedEmail ? ADMIN_EMAILS.has(normalizedEmail) : false;
   const isIdAdmin = ADMIN_IDS.has(user.id);
   const isRoleAdmin = hasAdminRole(user);
+  const accessGrant = await getAdminAccessGrantByEmail(normalizedEmail);
+  const isGrantedAdmin = accessGrant?.role === "admin";
 
-  if (!isEmailAdmin && !isIdAdmin && !isRoleAdmin) {
+  if (!isEmailAdmin && !isIdAdmin && !isRoleAdmin && !isGrantedAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

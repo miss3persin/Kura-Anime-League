@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase/client";
 import {
     TrendingUp, TrendingDown, Activity, Zap,
     BarChart3, RefreshCw, Loader2, Search, ArrowDownUp
 } from "lucide-react";
+
+import { getHistoryChange, AnimeHypeHistoryEntry } from '@/lib/hype';
 
 interface AnimeHype {
     id: number;
@@ -20,7 +21,7 @@ interface AnimeHype {
     average_score: number;
     status: string;
     is_eligible?: boolean;
-    hype_history?: { timestamp: string; price: number; cost_kp?: number; hype?: number }[];
+    hype_history?: AnimeHypeHistoryEntry[];
 }
 
 type TimeRangeKey = "1h" | "24h" | "7d";
@@ -36,21 +37,23 @@ type AnimeModalProps = {
     onClose: () => void;
 };
 
-const formatHistoryEntry = (entry: { timestamp: string; price: number; cost_kp?: number; hype?: number }) => {
-    const date = new Date(entry.timestamp);
+const formatHistoryEntry = (entry: AnimeHypeHistoryEntry) => {
+    const timestamp = entry.timestamp ?? entry.scored_at ?? new Date().toISOString();
+    const date = new Date(timestamp);
+    const price = entry.price ?? entry.cost_kp;
     const isValid = !Number.isNaN(date.getTime());
     return {
         label: isValid ? date.toLocaleString() : "Live",
-        price: entry.price?.toLocaleString?.() ?? (entry.cost_kp ? entry.cost_kp.toLocaleString() : "—"),
-        hype: entry.hype ?? "—"
+        price: price?.toLocaleString?.() ?? "-",
+        hype: entry.hype ?? "-"
     };
 };
 
-const computeHistoryInsights = (history?: { timestamp: string; price: number }[]) => {
+const computeHistoryInsights = (history?: AnimeHypeHistoryEntry[]) => {
     if (!history || !history.length) {
         return { high: null, low: null, avg: null, volatility: null };
     }
-    const prices = history.map((entry) => entry.price ?? 0);
+    const prices = history.map((entry) => entry.price ?? entry.cost_kp ?? 0);
     const highs = Math.max(...prices);
     const lows = Math.min(...prices);
     const avg = Math.round(prices.reduce((sum, val) => sum + val, 0) / prices.length);
@@ -103,7 +106,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                 <div className="grid gap-8 sm:grid-cols-[200px,1fr] overflow-y-auto pr-2 custom-scrollbar">
                     <div className="space-y-4">
                         <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)] border-b border-[var(--border)] pb-2">Series Stats</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)] border-b border-[var(--border)] pb-2">Show Stats</p>
                             <div className="flex flex-col gap-2.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest">Hype</span>
@@ -121,7 +124,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                         </div>
 
                         <div className="p-4 rounded-2xl border border-accent/20 bg-accent/5">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white mb-2">Analysis</p>
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white mb-2">Overview</p>
                             <p className="text-[10px] text-[var(--muted)] leading-relaxed font-medium">
                                 Show values update daily based on community activity.
                             </p>
@@ -130,7 +133,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">About the Series</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">About This Show</p>
                             <div className="text-[12px] text-[var(--muted)] leading-relaxed font-medium bg-white/[0.02] p-5 rounded-2xl border border-white/5">
                                 {(anime as { description?: string }).description?.replace(/<[^>]*>/g, '') || "No synopsis available."}
                             </div>
@@ -138,7 +141,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                                <p className="font-black text-white border-b border-white/5 pb-2">Price Ranges</p>
+                                <p className="font-black text-white border-b border-white/5 pb-2">Price Range</p>
                                 <div className="flex justify-between items-center">
                                     <span>High Point</span>
                                     <span className="font-black text-white">{historyInsights.high?.toLocaleString() ?? latest.price} KP</span>
@@ -179,35 +182,7 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
     );
 }
 
-function getHistoryChange(history: AnimeHype["hype_history"], rangeMs: number, currentPrice: number) {
-    if (!history || history.length === 0) {
-        return { percent: 0, delta: 0 };
-    }
 
-    const sortedHistory = [...history].sort((a, b) => {
-        const aTime = new Date(a.timestamp).getTime();
-        const bTime = new Date(b.timestamp).getTime();
-        return bTime - aTime;
-    });
-
-    const nowEntry = sortedHistory[0];
-    const nowTime = isNaN(new Date(nowEntry.timestamp).getTime())
-        ? Date.now()
-        : new Date(nowEntry.timestamp).getTime();
-    const targetTime = nowTime - rangeMs;
-
-    const prevEntry =
-        sortedHistory.find((entry) => {
-            const entryTime = new Date(entry.timestamp).getTime();
-            return !isNaN(entryTime) && entryTime <= targetTime;
-        }) || sortedHistory[sortedHistory.length - 1];
-
-    const prevPrice = prevEntry?.price ?? prevEntry?.cost_kp ?? currentPrice;
-    const delta = currentPrice - prevPrice;
-    const percent = prevPrice ? Math.round((delta / prevPrice) * 100) : 0;
-
-    return { percent, delta };
-}
 
 export default function HypeIndexPage() {
     const [data, setData] = useState<AnimeHype[]>([]);
@@ -228,14 +203,17 @@ export default function HypeIndexPage() {
 
         try {
             const orderDirection = direction ?? sortDirection;
-            const { data: anime, error } = await supabase
-                .from('anime_cache')
-                .select('*')
-                .order('hype_score', { ascending: orderDirection === 'asc' });
+            const response = await fetch(`/api/market?sort=hype&direction=${orderDirection}&limit=250`, {
+                cache: 'no-store'
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to load market data.');
+            }
 
-            if (error) throw error;
-
-            if (anime) setData(anime as unknown as AnimeHype[]);
+            if (Array.isArray(payload.items)) {
+                setData(payload.items as AnimeHype[]);
+            }
 
         } catch (error) {
             console.error('Failed to load hype index:', error);
@@ -249,13 +227,24 @@ export default function HypeIndexPage() {
     const refreshIndex = async () => {
         setRefreshing(true);
         try {
-            await fetch("/api/hype/refresh", { cache: "no-store" });
-        } catch (error) {
-            console.error("Failed to trigger backend hype refresh", error);
-        }
-        try {
-            await fetchData({ skipLoading: true });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+            const response = await fetch("/api/hype/refresh", { cache: "no-store", signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(`API refresh failed: ${response.status} - ${errorBody.error || response.statusText}`);
+            }
+        } catch (error: unknown) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.error("Backend hype refresh timed out.");
+            } else {
+                console.error("Failed to trigger backend hype refresh:", error);
+            }
         } finally {
+            await fetchData({ skipLoading: true });
             setRefreshing(false);
         }
     };
@@ -291,9 +280,9 @@ export default function HypeIndexPage() {
                             <Activity size={20} />
                         </div>
                         <div>
-                            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Hype Index</h1>
+                            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Show Trends</h1>
                             <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1 opacity-60">
-                                Real-time operational intelligence
+                                Live ranking and pricing updates
                             </p>
                         </div>
                     </div>
@@ -343,12 +332,42 @@ export default function HypeIndexPage() {
                 {/* Legend / Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 px-1">
                     {[
-                        { label: 'Bullish', desc: 'Anime trending upwards in community buzz.', icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/20' },
-                        { label: 'Volatile', desc: 'High hype but rapid price movement expected.', icon: Zap, color: 'text-accent', bg: 'bg-accent/10 border-accent/20' },
-                        { label: 'Blue Chip', desc: 'Consistently high scores and popularity.', icon: BarChart3, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/20' },
+                        {
+                            label: 'Bullish',
+                            desc: 'Anime trending upwards in community buzz.',
+                            icon: TrendingUp,
+                            color: 'text-green-500',
+                            bg: 'bg-green-500/10 border-green-500/20',
+                            iconSurface: '#dcfce7',
+                            iconBorder: 'rgba(34, 197, 94, 0.22)'
+                        },
+                        {
+                            label: 'Volatile',
+                            desc: 'High hype but rapid price movement expected.',
+                            icon: Zap,
+                            color: 'text-accent',
+                            bg: 'bg-accent/10 border-accent/20',
+                            iconSurface: '#fae8ff',
+                            iconBorder: 'rgba(217, 70, 239, 0.22)'
+                        },
+                        {
+                            label: 'Blue Chip',
+                            desc: 'Consistently high scores and popularity.',
+                            icon: BarChart3,
+                            color: 'text-blue-500',
+                            bg: 'bg-blue-500/10 border-blue-500/20',
+                            iconSurface: '#dbeafe',
+                            iconBorder: 'rgba(59, 130, 246, 0.22)'
+                        },
                     ].map((item, i) => (
                         <div key={i} className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border ${item.bg} flex items-start gap-3 md:gap-4 shadow-lg transition-transform hover:-translate-y-1`}>
-                            <div className={`p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 ${item.color} shrink-0`}>
+                            <div
+                                className={`p-2.5 md:p-3 rounded-lg md:rounded-xl border shadow-sm dark:bg-black/20 dark:border-white/5 ${item.color} shrink-0`}
+                                style={{
+                                    backgroundColor: item.iconSurface,
+                                    borderColor: item.iconBorder,
+                                }}
+                            >
                                 <item.icon size={16} />
                             </div>
                             <div className="space-y-0.5 md:space-y-1">
@@ -379,219 +398,223 @@ export default function HypeIndexPage() {
                                     const change = getHistoryChange(anime.hype_history, rangeInfo.ms, currentPrice);
                                     const isPositive = change.percent >= 0;
 
-                                    return (
-                                        <div key={anime.id} className="p-4 flex items-center gap-4 active:bg-accent/5 transition-colors" onClick={() => setSelectedAnime(anime)}>
-                                            <div className="text-[9px] font-black text-[var(--muted)] w-4 text-center">{rowNumber}</div>
-                                            <div className="w-10 h-14 shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
-                                                <img src={anime.cover_image} className="w-full h-full object-cover" alt="cover" />
-                                            </div>
-                                            <div className="grow min-w-0">
-                                                <h4 className="text-[11px] font-black uppercase text-[var(--foreground)] truncate italic leading-tight">{anime.title_english || anime.title_romaji}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text-[8px] font-black italic ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {isPositive ? '+' : ''}{change.percent}%
-                                                    </span>
-                                                    <span className="text-[8px] font-black text-accent">{anime.hype_score} PTS</span>
+                                                            return (
+                                                                <div key={anime.id} className="p-4 flex items-center gap-4 active:bg-accent/5 transition-colors" onClick={() => setSelectedAnime(anime)}>
+                                                                    <div className="text-[9px] font-black text-[var(--muted)] w-4 text-center">{rowNumber}</div>
+                                                                    <div className="w-10 h-14 shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
+                                                                        <img src={anime.cover_image} className="w-full h-full object-cover" alt="cover" />
+                                                                    </div>
+                                                                    <div className="grow min-w-0">
+                                                                        <h4 className="text-[11px] font-black uppercase text-[var(--foreground)] truncate italic leading-tight">{anime.title_english || anime.title_romaji}</h4>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <span className={`text-[8px] font-black italic ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                {isPositive ? '+' : ''}{change.percent}%
+                                                                            </span>
+                                                                            <span className="text-[8px] font-black text-accent">{anime.hype_score} PTS</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-right shrink-0">
+                                                                        <div className="text-[11px] font-black text-[var(--foreground)]">{currentPrice.toLocaleString()}</div>
+                                                                        <div className="text-[7px] font-bold text-[var(--muted)] uppercase tracking-widest">KuraPoints</div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Desktop Table View */}
+                                                    <table className="hidden md:table w-full text-left border-collapse table-fixed">
+                                                        <thead className="sticky top-0 z-20 bg-[var(--background)] border-b border-[var(--border)]">
+                                                            <tr>
+                                                                <th className="w-20 px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">#</th>
+                                                                <th className="w-[35%] px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Anime / Ticker</th>
+                                                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Hype Score</th>
+                                                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{rangeInfo.label} Change</th>
+                                                                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Market Price</th>
+                                                                <th className="w-32 px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-[var(--border)]">
+                                                            {loading ? (
+                                                                <tr>
+                                                                    <td colSpan={6} className="py-40 text-center">
+                                                                        <Loader2 className="animate-spin mx-auto text-accent mb-4" size={32} />
+                                                                        <p className="text-[10px] font-black uppercase text-[var(--muted)] tracking-[0.3em]">Downloading Market Data...</p>
+                                                                    </td>
+                                                                </tr>
+                                                            ) : paginatedData.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan={6} className="py-40 text-center text-[var(--muted)] font-black uppercase text-xs tracking-widest italic opacity-40">No matching tickers found</td>
+                                                                </tr>
+                                                            ) : paginatedData.map((anime, index) => {
+                                                                const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                                                                const rowNumber = sortDirection === 'desc' 
+                                                                    ? globalIndex + 1 
+                                                                    : filtered.length - globalIndex;
+                                                                    
+                                                                const currentPrice = anime.cost_kp ?? 2500;
+                                                                const change = getHistoryChange(anime.hype_history, rangeInfo.ms, currentPrice);
+                                                                const isPositive = change.percent >= 0;
+
+                                                            return (
+                                                                <motion.tr
+                                                                    key={anime.id}
+                                                                    initial={{ opacity: 0 }}
+                                                                    whileInView={{ opacity: 1 }}
+                                                                    viewport={{ once: true }}
+                                                                    className="hover:bg-accent/[0.03] transition-colors group cursor-pointer border-b border-white/[0.02]"
+                                                                    onClick={() => setSelectedAnime(anime)}
+                                                                >
+                                                                    <td className="px-8 py-5">
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">{rowNumber}</span>
+                                                                            {!anime.is_eligible && (
+                                                                                <span className="text-[7px] font-black uppercase text-accent/60 bg-accent/5 px-1.5 py-0.5 rounded-md border border-accent/10 whitespace-nowrap" title="Banned from Draft: Overhyped/Legacy">Legacy</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                        <td className="px-8 py-5 min-w-0">
+                                                                            <div className="flex items-center gap-4">
+                                                                                <div className="relative w-10 h-14 shrink-0">
+                                                                                    <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
+                                                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
+                                                                                </div>
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-[11px] font-black uppercase tracking-tight text-[var(--foreground)] group-hover:text-accent transition-colors truncate w-full italic leading-tight" title={anime.title_english || anime.title_romaji}>
+                                                                                        {anime.title_english || anime.title_romaji}
+                                                                                    </p>
+                                                                                    <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest mt-1 truncate opacity-60">
+                                                                                        {anime.title_english ? anime.title_romaji : `Ticker: $${anime.id}`}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-8 py-5">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="w-16 bg-[var(--background)] h-1 rounded-full overflow-hidden border border-[var(--border)]">
+                                                                                    <div className="h-full bg-accent shadow-[0_0_8px_var(--accent)]" style={{ width: `${(anime.hype_score / 1000) * 100}%` }}></div>
+                                                                                </div>
+                                                                                <span className="text-[10px] font-black italic text-accent">{anime.hype_score}</span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-8 py-5">
+                                                                            <div className="flex flex-col gap-1">
+                                                                                <div className={`flex items-center gap-1.5 font-black text-[10px] italic ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                    {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                                                                    {change.percent >= 0 ? '+' : ''}{change.percent}%
+                                                                                </div>
+                                                                                <span className="text-[7px] uppercase tracking-[0.5em] text-[var(--muted)] opacity-50">
+                                                                                    Δ{change.delta.toLocaleString()} KP
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-8 py-5">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Zap size={12} className="text-yellow-500" />
+                                                                                <span className="text-[11px] font-black text-[var(--foreground)] italic tracking-tighter">{currentPrice.toLocaleString()} KP</span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-8 py-5">
+                                                                            <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-[0.1em] border ${anime.status === 'RELEASING' ? 'bg-green-500/10 border-green-500/30 text-green-500' :
+                                                                                anime.status === 'HIATUS' ? 'bg-red-500/10 border-red-500/30 text-red-500' :
+                                                                                    'bg-[var(--surface-hover)] border-[var(--border)] text-[var(--muted)]'
+                                                                                }`}>
+                                                                                {anime.status || 'FINISHED'}
+                                                                            </span>
+                                                                        </td>
+                                                                    </motion.tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
-                                            <div className="text-right shrink-0">
-                                                <div className="text-[11px] font-black text-[var(--foreground)]">{currentPrice.toLocaleString()}</div>
-                                                <div className="text-[7px] font-bold text-[var(--muted)] uppercase tracking-widest">KuraPoints</div>
-                                            </div>
+
+                                            {totalPages > 1 && (
+                                                <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-8 py-4 md:py-6 bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2rem] shadow-xl">
+                                                    <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">
+                                                        Displaying <span className="text-accent">{paginatedData.length}</span> / <span className="text-white">{filtered.length}</span> shows
+                                                    </div>
+                                                    <div className="flex items-center gap-2 md:gap-3">
+                                                        <button
+                                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                            disabled={currentPage === 1}
+                                                            className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                                        >
+                                                            <ChevronLeft size={14} />
+                                                        </button>
+
+                                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                                            {Array.from({ length: Math.min(mobileVisiblePages(totalPages), totalPages) }).map((_, i) => {
+                                                                const pageNum = getPageNumbers(totalPages, currentPage)[i];
+                                                                if (pageNum === -1) return <span key={`dots-${i}`} className="text-[var(--muted)] px-1">...</span>;
+
+                                                                return (
+                                                                    <button
+                                                                        key={pageNum}
+                                                                        onClick={() => setCurrentPage(pageNum)}
+                                                                        className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black transition-all cursor-pointer ${currentPage === pageNum ? 'bg-accent text-white shadow-lg' : 'border border-[var(--border)] bg-[var(--background)] text-[var(--muted)]'}`}
+                                                                    >
+                                                                        {pageNum}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                            disabled={currentPage === totalPages}
+                                                            className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                                        >
+                                                            <ChevronRight size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
+                                    </div>
+                                    {selectedAnime && <AnimeDetailModal anime={selectedAnime} onClose={() => setSelectedAnime(null)} />}
+                                    </AppShell>
                                     );
-                                })}
-                            </div>
+                                    }
 
-                            {/* Desktop Table View */}
-                            <table className="hidden md:table w-full text-left border-collapse table-fixed">
-                                <thead className="sticky top-0 z-20 bg-[var(--background)] border-b border-[var(--border)]">
-                                    <tr>
-                                        <th className="w-20 px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">#</th>
-                                        <th className="w-[35%] px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Anime / Ticker</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Hype Score</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{rangeInfo.label} Change</th>
-                                        <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Market Price</th>
-                                        <th className="w-32 px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border)]">
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={6} className="py-40 text-center">
-                                                <Loader2 className="animate-spin mx-auto text-accent mb-4" size={32} />
-                                                <p className="text-[10px] font-black uppercase text-[var(--muted)] tracking-[0.3em]">Downloading Market Data...</p>
-                                            </td>
-                                        </tr>
-                                    ) : paginatedData.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="py-40 text-center text-[var(--muted)] font-black uppercase text-xs tracking-widest italic opacity-40">No matching tickers found</td>
-                                        </tr>
-                                    ) : paginatedData.map((anime, index) => {
-                                        const globalIndex = (currentPage - 1) * itemsPerPage + index;
-                                        const rowNumber = sortDirection === 'desc' 
-                                            ? globalIndex + 1 
-                                            : filtered.length - globalIndex;
-                                            
-                                        const currentPrice = anime.cost_kp ?? 2500;
-                                        const change = getHistoryChange(anime.hype_history, rangeInfo.ms, currentPrice);
-                                        const isPositive = change.percent >= 0;
+function mobileVisiblePages(total: number) {
+                                    if (total <= 5) return total;
+                                    return 5;
+                                    }
 
+                                    function getPageNumbers(total: number, current: number) {
+                                    const pages = [];
+                                    if (total <= 5) {
+                                    for (let i = 1; i <= total; i++) pages.push(i);
+                                    } else {
+                                    if (current <= 3) {
+                                    pages.push(1, 2, 3, 4, total);
+                                    } else if (current >= total - 2) {
+                                    pages.push(1, total - 3, total - 2, total - 1, total);
+                                    } else {
+                                    pages.push(1, current - 1, current, current + 1, total);
+                                    }
+                                    }
+                                    return pages;
+                                    }
+
+                                    function ChevronLeft({ size }: { size: number }) {
                                     return (
-                                        <motion.tr
-                                            key={anime.id}
-                                            initial={{ opacity: 0 }}
-                                            whileInView={{ opacity: 1 }}
-                                            viewport={{ once: true }}
-                                            className="hover:bg-accent/[0.03] transition-colors group cursor-pointer border-b border-white/[0.02]"
-                                            onClick={() => setSelectedAnime(anime)}
-                                        >
-                                            <td className="px-8 py-5">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)]">{rowNumber}</span>
-                                                    {!anime.is_eligible && (
-                                                        <span className="text-[7px] font-black uppercase text-accent/60 bg-accent/5 px-1.5 py-0.5 rounded-md border border-accent/10 whitespace-nowrap" title="Banned from Draft: Overhyped/Legacy">Legacy</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                                <td className="px-8 py-5 min-w-0">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="relative w-10 h-14 shrink-0">
-                                                            <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-[11px] font-black uppercase tracking-tight text-[var(--foreground)] group-hover:text-accent transition-colors truncate w-full italic leading-tight" title={anime.title_english || anime.title_romaji}>
-                                                                {anime.title_english || anime.title_romaji}
-                                                            </p>
-                                                            <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest mt-1 truncate opacity-60">
-                                                                {anime.title_english ? anime.title_romaji : `Ticker: $${anime.id}`}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-16 bg-[var(--background)] h-1 rounded-full overflow-hidden border border-[var(--border)]">
-                                                            <div className="h-full bg-accent shadow-[0_0_8px_var(--accent)]" style={{ width: `${(anime.hype_score / 1000) * 100}%` }}></div>
-                                                        </div>
-                                                        <span className="text-[10px] font-black italic text-accent">{anime.hype_score}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className={`flex items-center gap-1.5 font-black text-[10px] italic ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                                                            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                                                            {change.percent >= 0 ? '+' : ''}{change.percent}%
-                                                        </div>
-                                                        <span className="text-[7px] uppercase tracking-[0.5em] text-[var(--muted)] opacity-50">
-                                                            Δ{change.delta.toLocaleString()} KP
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <div className="flex items-center gap-2">
-                                                        <Zap size={12} className="text-yellow-500" />
-                                                        <span className="text-[11px] font-black text-[var(--foreground)] italic tracking-tighter">{currentPrice.toLocaleString()} KP</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-[0.1em] border ${anime.status === 'RELEASING' ? 'bg-green-500/10 border-green-500/30 text-green-500' :
-                                                        anime.status === 'HIATUS' ? 'bg-red-500/10 border-red-500/30 text-red-500' :
-                                                            'bg-[var(--surface-hover)] border-[var(--border)] text-[var(--muted)]'
-                                                        }`}>
-                                                        {anime.status || 'FINISHED'}
-                                                    </span>
-                                                </td>
-                                            </motion.tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                    );
+                                    }
 
-                    {totalPages > 1 && (
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 md:px-8 py-4 md:py-6 bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2rem] shadow-xl">
-                            <div className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[var(--muted)]">
-                                Showing <span className="text-accent">{paginatedData.length}</span> / <span className="text-white">{filtered.length}</span> assets
-                            </div>
-                            <div className="flex items-center gap-2 md:gap-3">
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                    className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    <ChevronLeft size={14} />
-                                </button>
-                                
-                                <div className="flex items-center gap-1.5 md:gap-2">
-                                    {Array.from({ length: Math.min(mobileVisiblePages(totalPages, currentPage), totalPages) }).map((_, i) => {
-                                        const pageNum = getPageNumbers(totalPages, currentPage)[i];
-                                        if (pageNum === -1) return <span key={`dots-${i}`} className="text-[var(--muted)] px-1">...</span>;
+                                    function ChevronRight({ size }: { size: number }) {
+                                    return (
+                                    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                    );
+                                    }
 
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => setCurrentPage(pageNum)}
-                                                className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black transition-all cursor-pointer ${currentPage === pageNum ? 'bg-accent text-white shadow-lg' : 'border border-[var(--border)] bg-[var(--background)] text-[var(--muted)]'}`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
 
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="p-2.5 md:p-3 rounded-lg md:rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted)] hover:text-accent transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    <ChevronRight size={14} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            {selectedAnime && <AnimeDetailModal anime={selectedAnime} onClose={() => setSelectedAnime(null)} />}
-        </AppShell>
-    );
-}
 
-function mobileVisiblePages(total: number, current: number) {
-    if (total <= 5) return total;
-    return 5;
-}
 
-function getPageNumbers(total: number, current: number) {
-    const pages = [];
-    if (total <= 5) {
-        for (let i = 1; i <= total; i++) pages.push(i);
-    } else {
-        if (current <= 3) {
-            pages.push(1, 2, 3, 4, total);
-        } else if (current >= total - 2) {
-            pages.push(1, total - 3, total - 2, total - 1, total);
-        } else {
-            pages.push(1, current - 1, current, current + 1, total);
-        }
-    }
-    return pages;
-}
-
-function ChevronLeft({ size }: { size: number }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-    );
-}
-
-function ChevronRight({ size }: { size: number }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-    );
-}

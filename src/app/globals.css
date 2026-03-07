@@ -2,18 +2,13 @@
 
 @theme {
   --color-accent: var(--accent);
-  --color-neon-purple: #AE00FF;
-  --color-neon-cyan: #00FF9C;
-  --color-neon-pink: #FF2E63;
-  --color-neon-yellow: #FFD700;
-  
-  /* Dynamic Accents */
-  --color-electric-blue: var(--electric-blue);
-  --color-vivid-orange: var(--vivid-orange);
-  --color-emerald-green: var(--emerald-green);
-  --color-sakura-pink: var(--sakura-pink);
-  --color-deep-indigo: var(--deep-indigo);
-  --color-amber-gold: var(--amber-gold);
+  --accent-neon-purple: #AE00FF;
+  --accent-cyan: #00FFCC;
+  --accent-lava: #FF4D00;
+  --accent-gold: #FFD700;
+  --accent-emerald: #00D166;
+  --accent-ocean: #0070FF;
+  --accent-sakura: #FF6B9D;
 
   --font-outfit: 'Outfit', sans-serif;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -29,12 +24,13 @@
   --border: rgba(0, 0, 0, 0.12);
   
   /* Palette Variables */
-  --electric-blue: #0070FF;
-  --vivid-orange: #FF6B00;
-  --emerald-green: #00D166;
-  --sakura-pink: #FF6B9D;
-  --deep-indigo: #6366F1;
-  --amber-gold: #F59E0B;
+  --accent-neon-purple: #AE00FF;
+  --accent-cyan: #00FFCC;
+  --accent-lava: #FF4D00;
+  --accent-gold: #FFD700;
+  --accent-emerald: #00D166;
+  --accent-ocean: #0070FF;
+  --accent-sakura: #FF6B9D;
 }
 
 .dark {
@@ -46,12 +42,13 @@
   --border: rgba(255, 255, 255, 0.1);
   
   /* Dark Mode Adjustments (Slightly more vibrant) */
-  --electric-blue: #3B82F6;
-  --vivid-orange: #FB923C;
-  --emerald-green: #34D399;
-  --sakura-pink: #F472B6;
-  --deep-indigo: #818CF8;
-  --amber-gold: #FBBF24;
+  --accent-neon-purple: #C084FC;
+  --accent-cyan: #5EEAD4;
+  --accent-lava: #FB923C;
+  --accent-gold: #FCD34D;
+  --accent-emerald: #34D399;
+  --accent-ocean: #60A5FA;
+  --accent-sakura: #F472B6;
 }
 
 @layer base {

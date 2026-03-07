@@ -63,10 +63,10 @@ export default function SettingsPage() {
             if (error) throw error;
 
             setModalTitle("PROFILE UPDATED");
-            setModalMessage("Your league credentials have been successfully synchronized.");
+            setModalMessage("Your profile has been updated.");
             setIsModalOpen(true);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Synchronization failed.";
+            const message = err instanceof Error ? err.message : "Update failed.";
             setModalTitle("UPDATE FAILED");
             setModalMessage(message);
             setIsModalOpen(true);
@@ -85,7 +85,7 @@ export default function SettingsPage() {
             <AppShell>
                 <div className="flex flex-col items-center justify-center py-40 space-y-4">
                     <Loader2 className="animate-spin text-accent" size={48} />
-                    <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs">Accessing profile data...</p>
+                    <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs">Loading profile...</p>
                 </div>
             </AppShell>
         );
@@ -138,7 +138,7 @@ export default function SettingsPage() {
                                         disabled={saving}
                                         className="w-full py-3.5 md:py-4 bg-accent text-white font-black uppercase tracking-[0.2em] rounded-xl md:rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 md:gap-3 shadow-lg shadow-accent/20 cursor-pointer disabled:opacity-50 text-[10px] md:text-xs"
                                     >
-                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Sync Account</>}
+                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <><Save size={16} /> Save Changes</>}
                                     </button>
                                 </div>
                             </form>
@@ -154,7 +154,7 @@ export default function SettingsPage() {
                                         </div>
                                         <div>
                                             <h4 className="text-base md:text-lg font-bold text-[var(--foreground)]">Draft Reminders</h4>
-                                            <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-tighter">Phase 3 Intelligence</p>
+                                            <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-tighter">Coming soon</p>
                                         </div>
                                     </div>
                                     <div className="w-10 md:w-14 h-6 md:h-8 bg-[var(--border)] rounded-full relative">
@@ -173,10 +173,10 @@ export default function SettingsPage() {
                                     onClick={handleLogout}
                                     className="w-full py-4 md:py-5 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px] rounded-xl md:rounded-2xl hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all flex items-center justify-center gap-2 md:gap-3 cursor-pointer shadow-sm"
                                 >
-                                    <LogOut size={14} /> Logout Official
+                                    <LogOut size={14} /> Log Out
                                 </button>
                                 <button className="w-full py-4 md:py-5 border border-red-500/10 text-red-500/40 font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px] rounded-xl md:rounded-2xl cursor-not-allowed">
-                                    Decommission
+                                    Delete Account
                                 </button>
                             </div>
                         </div>
@@ -185,8 +185,8 @@ export default function SettingsPage() {
                             <div className="p-2.5 md:p-3 w-fit bg-accent/10 rounded-lg md:rounded-xl text-accent">
                                 <Shield size={20} />
                             </div>
-                            <h4 className="text-base md:text-lg font-black uppercase tracking-tighter italic text-[var(--foreground)]">Player Protection</h4>
-                            <p className="text-[10px] md:text-xs text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider">Your league data is secured via end-to-end Supabase encryption. We never share draft picks.</p>
+                            <h4 className="text-base md:text-lg font-black uppercase tracking-tighter italic text-[var(--foreground)]">Account Security</h4>
+                            <p className="text-[10px] md:text-xs text-[var(--muted)] font-medium leading-relaxed uppercase tracking-wider">Your data is stored securely. We do not share your draft picks.</p>
                         </div>
                     </div>
                 </div>
@@ -202,3 +202,4 @@ export default function SettingsPage() {
         </AppShell>
     );
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Home, User, LayoutGrid, Trophy, Vote, Heart, Settings, Bell, Users, Menu, LogOut, Sun, Moon, Zap,
     Shield, Activity, Dice6, ShieldCheck
@@ -14,6 +14,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { PageHelpCenter } from "@/components/ui/page-help-center";
 
 type NavItem = {
     id: string;
@@ -43,19 +44,98 @@ type SeasonInfo = {
 const NAV_ITEMS: NavItem[] = [
     { id: 'home', icon: Home, label: 'Home', href: '/' },
     { id: 'profile', icon: User, label: 'My Profile', href: '/profile', protected: true },
-    { id: 'squad', icon: Shield, label: 'My Squad', href: '/squad', protected: true },
+    { id: 'squad', icon: Shield, label: 'My Team', href: '/squad', protected: true },
     { id: 'leagues', icon: Users, label: 'Leagues', href: '/leagues', protected: true },
-    { id: 'draft', icon: LayoutGrid, label: 'Draft Picks', href: '/draft', protected: true },
-    { id: 'hype', icon: Activity, label: 'Hype Index', href: '/hype' },
+    { id: 'draft', icon: LayoutGrid, label: 'Draft', href: '/draft', protected: true },
+    { id: 'hype', icon: Activity, label: 'Show Trends', href: '/hype' },
     { id: 'predict', icon: Dice6, label: 'Predictions', href: '/predict', protected: true },
     { id: 'leaderboard', icon: Trophy, label: 'Rankings', href: '/rankings' },
-    { id: 'vote', icon: Vote, label: 'Hype Polls', href: '/polls' },
+    { id: 'vote', icon: Vote, label: 'Polls', href: '/polls' },
     { id: 'donate', icon: Heart, label: 'Support Us', href: '/support' },
     { id: 'settings', icon: Settings, label: 'Settings', href: '/settings', protected: true },
     { id: 'admin', icon: ShieldCheck, label: 'Admin', href: '/admin', protected: true, adminOnly: true }
 ];
 
-const ACCENTS = ['#AE00FF', '#00FF9C', '#FF2E63', '#FFD700', '#FF4D00'];
+const ACCENT_DEFINITIONS = [
+    { varName: '--accent-neon-purple', fallback: '#AE00FF' },
+    { varName: '--accent-cyan', fallback: '#00FFCC' },
+    { varName: '--accent-lava', fallback: '#FF4D00' },
+    { varName: '--accent-gold', fallback: '#FFD700' },
+    { varName: '--accent-emerald', fallback: '#00D166' },
+    { varName: '--accent-ocean', fallback: '#0070FF' },
+    { varName: '--accent-sakura', fallback: '#FF6B9D' }
+];
+
+type NotificationChannel = 'push' | 'email' | 'system';
+
+type NotificationItem = {
+    id: string;
+    title: string;
+    body: string;
+    channel: NotificationChannel;
+    kpDelta?: number;
+    timestamp: string;
+    read?: boolean;
+};
+
+const NOTIFICATION_CHANNEL_META: Record<NotificationChannel, { label: string; tone: string }> = {
+    push: { label: 'Push', tone: 'bg-accent text-black' },
+    email: { label: 'Email digest', tone: 'bg-white text-black' },
+    system: { label: 'System', tone: 'bg-white/10 text-white' }
+};
+
+const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
+    {
+        id: 'push-episode',
+        title: 'Dungeon Meshi dropped a new episode',
+        body: 'Dungeon Meshi just dropped a new episode. +150 KP.',
+        channel: 'push',
+        kpDelta: 150,
+        timestamp: '2026-03-02T18:30:00Z',
+        read: false
+    },
+    {
+        id: 'email-weekly',
+        title: 'Weekly Digest: Rank & highlights',
+        body: 'Weekly digest: Your rank, best/worst performer, transfer suggestion',
+        channel: 'email',
+        timestamp: '2026-03-01T07:15:00Z',
+        read: false
+    },
+    {
+        id: 'system-draft',
+        title: 'Draft opens tomorrow',
+        body: 'Draft opens tomorrow at 12:00 UTC. Set your picks and review transfers.',
+        channel: 'system',
+        timestamp: '2026-03-02T09:45:00Z',
+        read: true
+    }
+];
+
+const SUBSCRIPTION_PREVIEWS: { channel: NotificationChannel; description: string; helper: string }[] = [
+    {
+        channel: 'push',
+        description: 'Instant alerts when one of your shows earns KP or gets a new episode.',
+        helper: 'Dungeon Meshi just dropped a new episode. +150 KP.'
+    },
+    {
+        channel: 'email',
+        description: 'Weekly digest with rank recap, best/worst performer, and a transfer tip.',
+        helper: 'Weekly digest: Your rank, best/worst performer, transfer suggestion'
+    }
+];
+
+const formatTimeAgo = (timestamp?: string) => {
+    if (!timestamp) return 'just now';
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+};
 
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [accentColor, setAccentColor] = useState('#AE00FF');
@@ -65,15 +145,148 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [seasonInfo, setSeasonInfo] = useState<SeasonInfo>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [authSession, setAuthSession] = useState<Session | null>(null);
+    const [notifications, setNotifications] = useState<NotificationItem[]>(SAMPLE_NOTIFICATIONS);
+    const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+    const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const notificationPanelRef = useRef<HTMLDivElement | null>(null);
+    const [preferences, setPreferences] = useState({ pushEnabled: true, emailEnabled: true });
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
+    const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+    const latestPush = notifications.find(n => n.channel === 'push');
+    const latestEmail = notifications.find(n => n.channel === 'email');
+    const fetchNotifications = useCallback(async () => {
+        if (!authSession?.access_token) {
+            setNotifications(SAMPLE_NOTIFICATIONS);
+            setPreferences({ pushEnabled: true, emailEnabled: true });
+            setLoadingNotifications(false);
+            return;
+        }
+        setLoadingNotifications(true);
+        try {
+            const headers: Record<string, string> = {
+                Authorization: `Bearer ${authSession.access_token}`
+            };
+            const response = await fetch('/api/notifications', {
+                cache: 'no-store',
+                headers
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                setNotifications(SAMPLE_NOTIFICATIONS);
+                setPreferences({ pushEnabled: true, emailEnabled: true });
+                return;
+            }
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to load notifications');
+            }
+            const fetchedNotifications = Array.isArray(payload.notifications) ? payload.notifications : [];
+            setNotifications(fetchedNotifications);
+            setPreferences({
+                pushEnabled: Boolean(payload.preferences?.push_enabled ?? true),
+                emailEnabled: Boolean(payload.preferences?.email_enabled ?? true)
+            });
+        } catch (error) {
+            console.error('Failed to load notifications', error);
+            setNotifications((prev) => (prev.length ? prev : SAMPLE_NOTIFICATIONS));
+        } finally {
+            setLoadingNotifications(false);
+        }
+    }, [authSession?.access_token]);
+    const updateNotificationPreferences = useCallback(async (payload: { pushEnabled?: boolean; emailEnabled?: boolean }) => {
+        try {
+            if (!authSession?.access_token) {
+                return;
+            }
+            const response = await fetch('/api/notifications', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authSession.access_token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            const payloadResponse = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                return;
+            }
+            if (!response.ok) {
+                throw new Error(payloadResponse.error || 'Failed to update preferences');
+            }
+            setPreferences({
+                pushEnabled: Boolean(payloadResponse.preferences?.push_enabled ?? true),
+                emailEnabled: Boolean(payloadResponse.preferences?.email_enabled ?? true)
+            });
+        } catch (error) {
+            console.error('Failed to update notification preferences', error);
+        }
+    }, [authSession?.access_token]);
+    const markAllRead = useCallback(async () => {
+        try {
+            if (!authSession?.access_token) return;
+            await fetch('/api/notifications', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authSession.access_token}`
+                },
+                body: JSON.stringify({ markAllRead: true })
+            });
+            await fetchNotifications();
+        } catch (error) {
+            console.error('Failed to mark notifications as read', error);
+        }
+    }, [authSession?.access_token, fetchNotifications]);
+    const togglePreference = useCallback(
+        (channel: 'push' | 'email') => {
+            if (!user) {
+                return;
+            }
+            const nextValue = channel === 'push' ? !preferences.pushEnabled : !preferences.emailEnabled;
+            updateNotificationPreferences(
+                channel === 'push' ? { pushEnabled: nextValue } : { emailEnabled: nextValue }
+            );
+        },
+        [preferences.emailEnabled, preferences.pushEnabled, updateNotificationPreferences, user]
+    );
 
     useEffect(() => {
         const frame = requestAnimationFrame(() => setMounted(true));
         return () => cancelAnimationFrame(frame);
     }, []);
+
+    useEffect(() => {
+        void fetchNotifications();
+    }, [fetchNotifications]);
+
+    useEffect(() => {
+        if (notificationPanelOpen) {
+            markAllRead();
+        }
+    }, [notificationPanelOpen, markAllRead]);
+
+    useEffect(() => {
+        const handleClick = (event: MouseEvent) => {
+            if (
+                notificationPanelOpen &&
+                !notificationPanelRef.current?.contains(event.target as Node) &&
+                !notificationButtonRef.current?.contains(event.target as Node)
+            ) {
+                setNotificationPanelOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [notificationPanelOpen]);
+
+    useEffect(() => {
+        if (notificationPanelOpen) {
+            setNotificationPanelOpen(false);
+        }
+    }, [pathname]);
 
     useEffect(() => {
         const fetchUserAndProfile = async () => {
@@ -172,7 +385,13 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     // Handle dynamic accent color on navigation
     useEffect(() => {
         const updateAccent = () => {
-            const randomAccent = ACCENTS[Math.floor(Math.random() * ACCENTS.length)];
+            const computed = typeof window !== 'undefined' ? getComputedStyle(document.documentElement) : null;
+            const palette = ACCENT_DEFINITIONS.map(({ varName, fallback }) => {
+                const computedValue = computed?.getPropertyValue(varName).trim();
+                return computedValue || fallback;
+            });
+
+            const randomAccent = palette[Math.floor(Math.random() * palette.length)];
             setAccentColor(randomAccent);
             document.documentElement.style.setProperty('--accent', randomAccent);
         };
@@ -267,7 +486,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                     />
                                     <div className="overflow-hidden">
                                         <p className="text-[10px] font-black uppercase text-[var(--foreground)] truncate">{profile?.username || user.user_metadata.username || user.email?.split('@')[0]}</p>
-                                        <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">League Member</p>
+                                        <p className="text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest">Member</p>
                                     </div>
                                 </div>
                                 <button
@@ -310,7 +529,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-6">
+                    <div className="flex items-center gap-2 md:gap-4">
                         {profile && (
                             <div className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-3 md:px-4 py-1.5 md:py-2 rounded-full">
                                 <Zap size={12} className="text-accent fill-accent md:w-3.5 md:h-3.5" />
@@ -319,21 +538,188 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                                 </span>
                             </div>
                         )}
+                        <div className="hidden md:block">
+                            <PageHelpCenter showReminder={false} showFloatingButton={false} />
+                        </div>
                         <button
                             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                             className="p-2 hover:bg-[var(--surface-hover)] rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] transition-all"
                         >
                             {mounted && (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />)}
                         </button>
-                        <button className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors relative p-2 hidden xs:block">
-                            <Bell size={20} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[var(--background)]"></span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                ref={notificationButtonRef}
+                                onClick={() => setNotificationPanelOpen((prev) => !prev)}
+                                className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors relative p-2 rounded-lg border border-transparent hover:border-[var(--border)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                                aria-haspopup="true"
+                                aria-expanded={notificationPanelOpen}
+                            >
+                                <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 text-[9px] leading-none w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-red-500/40">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </button>
+                            <AnimatePresence>
+                                {notificationPanelOpen && (
+                                    <motion.div
+                                        ref={notificationPanelRef}
+                                        initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                                        transition={{ type: 'spring', stiffness: 350, damping: 24 }}
+                                        className="absolute right-0 top-full mt-3 w-screen max-w-sm xs:max-w-xs bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl px-4 py-4 space-y-4 z-50"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="space-y-0.5">
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">Notifications</p>
+                                                <p className="text-[11px] font-bold text-[var(--foreground)]">
+                                                    Push Notifications / Email Digest
+                                                </p>
+                                            </div>
+                                            {unreadCount > 0 && (
+                                                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-accent">
+                                                    {unreadCount} new
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {SUBSCRIPTION_PREVIEWS.map((preview) => {
+                                                const previewTimestamp = preview.channel === 'push' ? latestPush?.timestamp : latestEmail?.timestamp;
+                                                return (
+                                                    <div
+                                                        key={preview.channel}
+                                                        className="rounded-xl border border-white/5 bg-gradient-to-br from-white/5 to-black/20 p-3 space-y-1"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
+                                                                {NOTIFICATION_CHANNEL_META[preview.channel].label}
+                                                            </span>
+                                                            <span className="text-[8px] text-[var(--muted)]">
+                                                                {formatTimeAgo(previewTimestamp)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] font-black text-[var(--foreground)] uppercase leading-tight">
+                                                            {preview.helper}
+                                                        </p>
+                                                        <p className="text-[9px] text-[var(--muted)]">{preview.description}</p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {([
+                                                {
+                                                    channel: 'push',
+                                                    label: 'Push alerts',
+                                                    description: 'Instant alerts for KP changes and new episodes.',
+                                                    enabled: preferences.pushEnabled
+                                                },
+                                                {
+                                                    channel: 'email',
+                                                    label: 'Weekly email digest',
+                                                    description: 'Rank recap, best/worst performer, and transfer suggestion.',
+                                                    enabled: preferences.emailEnabled
+                                                }
+                                            ] as const).map((option) => (
+                                                <button
+                                                    key={option.channel}
+                                                    onClick={() => togglePreference(option.channel)}
+                                                    disabled={!user}
+                                                    className={cn(
+                                                        "w-full rounded-xl border px-3 py-2 text-left flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.3em]",
+                                                        option.enabled
+                                                            ? "border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-400"
+                                                            : "border-white/10 bg-white/5 hover:border-white/40",
+                                                        !user && "opacity-50 cursor-not-allowed"
+                                                    )}
+                                                >
+                                                    <div className="flex-1 space-y-0.5 text-left">
+                                                        <p className="font-black">{option.label}</p>
+                                                        <p className="text-[8px] font-normal uppercase tracking-[0.25em] text-[var(--muted)] leading-tight">
+                                                            {option.description}
+                                                        </p>
+                                                    </div>
+                                                    <span
+                                                        className={cn(
+                                                            "text-[8px] font-black uppercase tracking-[0.3em]",
+                                                            option.enabled ? "text-emerald-300" : "text-red-400"
+                                                        )}
+                                                    >
+                                                        {option.enabled ? 'On' : 'Off'}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {loadingNotifications && (
+                                            <p className="text-[8px] uppercase tracking-[0.3em] text-[var(--muted)]">
+                                                Syncing notifications…
+                                            </p>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            {notifications.length === 0 ? (
+                                                <div className="rounded-xl border border-dashed border-white/10 p-3 text-[10px] text-[var(--muted)] uppercase tracking-[0.3em] text-center">
+                                                    Notifications will appear here when a KP update or digest is ready.
+                                                </div>
+                                            ) : (
+                                                notifications.map((notification) => (
+                                                    <div
+                                                        key={notification.id}
+                                                        className="rounded-xl border border-white/5 bg-white/5 p-3 space-y-1"
+                                                    >
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span
+                                                                className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-[0.3em] ${NOTIFICATION_CHANNEL_META[notification.channel].tone}`}
+                                                            >
+                                                                {NOTIFICATION_CHANNEL_META[notification.channel].label}
+                                                            </span>
+                                                            <span className="text-[8px] text-[var(--muted)]">
+                                                                {formatTimeAgo(notification.timestamp)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <h4 className="text-[11px] font-black uppercase tracking-wide text-[var(--foreground)]">
+                                                                {notification.title}
+                                                            </h4>
+                                                            {notification.kpDelta ? (
+                                                                <span className="text-[10px] font-black text-accent">
+                                                                    +{notification.kpDelta} KP
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                        <p className="text-[10px] text-[var(--muted)] leading-tight">
+                                                            {notification.body}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                setNotificationPanelOpen(false);
+                                                router.push('/settings#notifications');
+                                            }}
+                                            className="w-full text-[10px] font-black uppercase tracking-[0.4em] text-accent border border-accent/40 rounded-xl py-2 hover:bg-accent/10 transition-colors"
+                                        >
+                                            Manage notification settings
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </header>
 
                 {/* Content */}
                 <main className="grow p-4 md:p-10 max-w-7xl mx-auto w-full pb-24 md:pb-20">
+                    <PageHelpCenter className="mb-6 md:mb-8" showInlineButton={false} />
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}
@@ -351,9 +737,9 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                 <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] px-6 py-3 pb-6 flex items-center justify-between">
                     {[
                         { icon: Home, label: 'Home', href: '/' },
-                        { icon: Shield, label: 'Squad', href: '/squad' },
+                        { icon: Shield, label: 'Team', href: '/squad' },
                         { icon: LayoutGrid, label: 'Draft', href: '/draft' },
-                        { icon: Activity, label: 'Hype', href: '/hype' },
+                        { icon: Activity, label: 'Trends', href: '/hype' },
                         { icon: User, label: 'Profile', href: '/profile' },
                     ].map((item) => {
                         const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));

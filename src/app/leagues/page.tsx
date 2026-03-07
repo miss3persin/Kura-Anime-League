@@ -279,7 +279,7 @@ if (userId) {
                                     >
                                         <Plus size={12} /> Create a League
                                     </button>
-                                000</div>
+                                </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                     {displayLeagues.map((league) => (

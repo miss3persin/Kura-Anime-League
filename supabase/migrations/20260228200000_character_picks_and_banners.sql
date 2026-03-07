@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS public.character_picks (
 -- RLS for character_picks
 ALTER TABLE public.character_picks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Character picks are viewable by everyone." ON public.character_picks;
 CREATE POLICY "Character picks are viewable by everyone." ON public.character_picks FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can manage their character picks." ON public.character_picks;
 CREATE POLICY "Users can manage their character picks." ON public.character_picks FOR ALL USING (
   EXISTS (SELECT 1 FROM public.teams WHERE id = character_picks.team_id AND user_id = auth.uid())
 );

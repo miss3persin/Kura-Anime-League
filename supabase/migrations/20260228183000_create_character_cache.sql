@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.character_cache (
 -- RLS
 ALTER TABLE public.character_cache ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Characters are viewable by everyone." ON public.character_cache;
 CREATE POLICY "Characters are viewable by everyone." ON public.character_cache FOR SELECT USING (true);
 
 -- Indexing

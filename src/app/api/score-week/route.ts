@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchAiringStatuses } from '@/lib/animeSources';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireServiceSecret } from '@/lib/service-auth';
+import { syncHypeMarket } from '@/lib/server/hype-sync';
 
 const EPISODE_POINTS = 100;
 const TRENDING_BONUS = 50;
@@ -214,45 +215,42 @@ export async function POST(request: Request) {
             });
         }
 
-        // 7. Update Hype Index + snapshot hype_history
+        // 7. Refresh market data using the shared hype sync so weekly scoring
+        // does not overwrite prices with a different formula.
+        await syncHypeMarket();
+
+        const { data: updatedAnimeRows } = await supabaseAdmin
+            .from('anime_cache')
+            .select('id, hype_score, cost_kp, hype_change')
+            .in('id', allAnimeIds);
+
+        const updatedAnimeMap = new Map(
+            ((updatedAnimeRows as Array<{ id: number; hype_score: number; cost_kp: number; hype_change: number }> | null) ?? [])
+                .map((row) => [row.id, row])
+        );
+
         for (const [animeIdStr, status] of Object.entries(animeStatuses)) {
-            const animeId = parseInt(animeIdStr);
-            const id = animeId;
-            const hype = Math.min(100, Math.round((status.trending / 500) * 100));
-            const newCost = Math.max(500, Math.round(
-                1000 + (status.popularity / 1000) + (status.trending * 5)
-            ));
-
-            const { data: rawOldAnime } = await supabaseAdmin
-                .from('anime_cache')
-                .select('hype_score, cost_kp')
-                .eq('id', id)
-                .single();
-
-            const oldAnime = rawOldAnime as { hype_score: number; cost_kp: number } | null;
-            const oldHype = oldAnime?.hype_score ?? hype;
-            const changePct = oldHype > 0 ? Math.round(((hype - oldHype) / oldHype) * 100) : 0;
-
-            await supabaseAdmin
-                .from('anime_cache')
-                .update({ hype_score: hype, cost_kp: newCost, hype_change: changePct, status: status.status })
-                .eq('id', id);
+            const id = parseInt(animeIdStr, 10);
+            const marketRow = updatedAnimeMap.get(id);
+            if (!marketRow) {
+                continue;
+            }
 
             await supabaseAdmin.from('hype_history').upsert({
                 anime_id: id,
                 season_id,
                 week_number,
-                hype_score: hype,
-                cost_kp: newCost,
+                hype_score: marketRow.hype_score,
+                cost_kp: marketRow.cost_kp,
                 trending: status.trending,
-                change_pct: changePct,
+                change_pct: marketRow.hype_change,
                 scored_at: new Date().toISOString()
             }, { onConflict: 'anime_id,week_number,season_id' });
 
             await supabaseAdmin.from('anime_history').insert({
                 anime_id: id,
-                points: status.averageScore || 0,
-                change_percent: changePct
+                points: marketRow.hype_score || 0,
+                change_percent: marketRow.hype_change
             });
         }
 

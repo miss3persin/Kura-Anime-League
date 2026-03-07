@@ -2,334 +2,232 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase/client"; // Still needed for session check
 import {
-    Zap, Trophy, Dice6, CheckCircle,
-    AlertCircle, Target, Loader2, Sparkles, Info
+    Loader2, Dice6, CheckCircle, AlertCircle, Info
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
 
-interface Prediction {
-    id: string;
-    prediction_type: string;
-    anime_id: number;
-    predicted_value: string;
-    kp_wager: number;
-    is_resolved: boolean;
-    is_correct: boolean;
-    kp_earned: number;
-    anime?: { title_romaji: string; title_english?: string; cover_image: string };
-}
+import { PredictionCategoryFilters } from "@/components/predictions/PredictionCategoryFilters";
+import { PredictionList } from "@/components/predictions/PredictionList";
+import { KPBalanceDisplay } from "@/components/predictions/KPBalanceDisplay";
+import type {
+    PredictionEvent,
+    PredictionsData,
+} from "@/lib/types/predictions";
 
-interface User {
-    id: string;
-    email?: string;
-}
+type Status = "loading" | "error" | "success" | "no_active_season";
+type FilterType = 'upcoming' | 'active_bets' | 'past_bets';
+type FlashMessage = { type: 'success' | 'error' | 'info'; text: string };
 
-interface Profile {
-    id: string;
-    total_kp: number;
-}
-
-interface Anime {
-    id: number;
-    title_romaji: string;
-    title_english?: string;
-    cover_image: string;
-    hype_score: number;
-}
-
-interface SeasonContextData {
-    phase: string;
-    deadline: string | null;
-    deadlineLabel: string | null;
-    activeSeason: { name?: string | null; id: string | number } | null;
-    upcomingSeason: { name?: string | null; id: string | number } | null;
-    currentWeek: number;
-    totalWeeks: number;
+function getErrorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error ? error.message : fallback;
 }
 
 export default function PredictPage() {
     const router = useRouter();
+    const [status, setStatus] = useState<Status>("loading");
+    const [predictionsData, setPredictionsData] = useState<PredictionsData | null>(null);
     const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [predictions, setPredictions] = useState<Prediction[]>([]);
-    const [trendingAnime, setTrendingAnime] = useState<Anime[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [message, setMessage] = useState<{ type: 'ok' | 'err', text: string } | null>(null);
-    const [seasonContext, setSeasonContext] = useState<SeasonContextData | null>(null);
+    const [currentFilter, setCurrentFilter] = useState<FilterType>('upcoming');
+    const [isPlacingBet, setIsPlacingBet] = useState(false);
+    const [message, setMessage] = useState<FlashMessage | null>(null);
 
-    // New Prediction Form
-    const [wagerType, setWagerType] = useState('SCORE_OVER');
-    const [selectedAnimeId, setSelectedAnimeId] = useState<number | null>(null);
-    const [amount, setAmount] = useState(500);
 
-    const loadSeasonContext = useCallback(async () => {
+    const fetchPredictionsData = useCallback(async (userId: string) => {
+        setStatus("loading");
         try {
-            const res = await fetch('/api/seasons/current');
-            if (!res.ok) throw new Error('Failed to fetch season data');
-            const data = await res.json();
-            setSeasonContext(data as SeasonContextData);
+            const response = await fetch(`/api/predictions?userId=${userId}`);
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                if (Object.keys(errorBody).length > 0) {
+                    console.error("Predictions API Error:", errorBody);
+                }
+                throw new Error(`Failed to fetch predictions data: ${errorBody.details || response.statusText}`);
+            }
+            const data: PredictionsData & { message?: string } = await response.json(); // API also returns message
+
+            if (data.upcoming_events.length === 0 && data.active_user_predictions.length === 0 && data.past_user_predictions.length === 0 && data.message) {
+                setPredictionsData(null);
+                setMessage({ type: 'info', text: data.message });
+                setStatus("no_active_season");
+            } else {
+                setPredictionsData(data);
+                setStatus("success");
+            }
         } catch (error: unknown) {
-            console.error('Unable to load season context:', error);
+            console.error("Error fetching predictions:", error);
+            setPredictionsData(null);
+            setMessage({ type: 'error', text: getErrorMessage(error, 'Failed to load predictions.') });
+            setStatus("error");
         }
     }, []);
 
-    const init = useCallback(async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) { setLoading(false); return; }
-        setUser(session.user as User);
-
-        const { data: prof } = await supabase.from('profiles').select('id, total_kp').eq('id', session.user.id).single();
-        if (prof) setProfile(prof as Profile);
-
-        const { data: preds } = await supabase
-            .from('predictions')
-            .select('*, anime:anime_cache(title_romaji, title_english, cover_image)')
-            .eq('user_id', session.user.id)
-            .order('created_at', { ascending: false });
-
-        if (preds) setPredictions(preds as unknown as Prediction[]);
-
-        const { data: trending } = await supabase
-            .from('anime_cache')
-            .select('id, title_romaji, title_english, cover_image, hype_score')
-            .order('hype_score', { ascending: false })
-            .limit(10);
-        if (trending) {
-            const casted = trending as unknown as Anime[];
-            setTrendingAnime(casted);
-            if (casted.length > 0) setSelectedAnimeId(casted[0].id);
-        }
-
-        await loadSeasonContext();
-
-        setLoading(false);
-    }, [loadSeasonContext]);
-
+    // Initial load and session check
     useEffect(() => {
+        const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) {
+                setStatus("error"); // No user, cannot load predictions
+                return;
+            }
+            setUser(session.user);
+            fetchPredictionsData(session.user.id);
+        };
         init();
-    }, [init]);
+    }, [fetchPredictionsData]);
 
-    const handlePredict = async () => {
-        if (!user || !profile || !selectedAnimeId) return;
-        if (profile.total_kp < amount) {
-            setMessage({ type: 'err', text: 'Insufficient KP balance for this wager.' });
-            return;
+    const handlePlaceBet = useCallback(async (
+        event: PredictionEvent,
+        chosenOptionValue: string,
+        wagerAmount: number
+    ) => {
+        if (!user || !predictionsData) return;
+        setIsPlacingBet(true);
+        try {
+            const response = await fetch('/api/predictions/place-bet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    eventId: event.id,
+                    chosenOptionValue,
+                    wagerAmount
+                }),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.details || errorBody.error || 'Failed to place bet.');
+            }
+
+            // Refetch predictions data to update UI
+            await fetchPredictionsData(user.id);
+            setMessage({ type: 'success', text: 'Bet placed successfully!' });
+        } catch (error: unknown) {
+            console.error("Place bet error:", error);
+            setMessage({ type: 'error', text: getErrorMessage(error, 'Failed to place bet.') });
+        } finally {
+            setIsPlacingBet(false);
+            setTimeout(() => setMessage(null), 3000);
         }
+    }, [user, predictionsData, fetchPredictionsData]);
 
-        const seasonId = seasonContext?.activeSeason?.id ?? seasonContext?.upcomingSeason?.id;
-        if (!seasonId) {
-            setMessage({ type: 'err', text: 'Season data is still syncing. Try again in a moment.' });
-            return;
-        }
-
-        const weekNumber = seasonContext?.currentWeek ?? 1;
-
-        setSubmitting(true);
-        const { error } = await supabase.from('predictions').insert({
-            user_id: user.id,
-            season_id: seasonId,
-            week_number: weekNumber,
-            prediction_type: wagerType,
-            anime_id: selectedAnimeId,
-            predicted_value: 'true', // Fixed undefined predictedVal
-            kp_wager: amount
-        });
-
-        if (!error) {
-            await supabase.rpc('increment_kp', { user_id: user.id, amount: -amount });
-            setMessage({ type: 'ok', text: 'Prediction locked. Fate is sealed.' });
-            init();
-        } else {
-            setMessage({ type: 'err', text: 'Market interference. You already have a prediction for this type.' });
-        }
-        setSubmitting(false);
-        setTimeout(() => setMessage(null), 3000);
-    };
-
-    if (loading) {
-        return (
-            <AppShell>
-                <div className="flex items-center justify-center py-64">
-                    <Loader2 className="animate-spin text-accent" size={48} />
-                </div>
-            </AppShell>
-        );
-    }
-
-    if (!user) {
-        return (
-            <AppShell>
-                <div className="flex flex-col items-center justify-center py-32 md:py-48 space-y-6 md:space-y-8 bg-[var(--surface)] rounded-2xl md:rounded-[3rem] border border-dashed border-[var(--border)] p-6 md:p-12 text-center mx-1 shadow-lg">
-                    <div className="w-16 h-16 md:w-20 md:h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10 shadow-lg">
-                        <Dice6 size={32} />
+    // Determine which list of predictions to display based on filter
+    const renderContent = () => {
+        switch (status) {
+            case "loading":
+                return (
+                    <div className="flex items-center justify-center py-64">
+                        <Loader2 className="animate-spin text-accent" size={48} />
                     </div>
-                    <div className="space-y-3 md:space-y-4 max-w-md">
-                        <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] leading-tight">Market Restricted</h3>
-                        <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-[9px] md:text-xs leading-relaxed">
-                            Prediction markets are exclusive to registered KAL members. Join the league to start wagering.
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => router.push('/login')}
-                        className="w-full md:w-auto px-10 py-4 md:py-5 bg-accent text-white text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] rounded-xl md:rounded-2xl hover:opacity-90 transition-all shadow-xl shadow-accent/20 cursor-pointer"
-                    >
-                        Log In to Predict
-                    </button>
-                </div>
-            </AppShell>
-        );
-    }
-
-    return (
-        <AppShell>
-            <div className="space-y-6 md:space-y-10 px-1">
-                {/* Header HUD */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
-                            <Dice6 size={20} />
+                );
+            case "error":
+                return (
+                    <div className="flex flex-col items-center justify-center py-48 space-y-8 bg-[var(--surface)] rounded-[3rem] border border-dashed border-[var(--border)] p-12 text-center shadow-xl">
+                        <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10">
+                            <Dice6 size={40} />
                         </div>
-                        <div>
-                            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Predictions</h1>
-                            <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
-                                Wager KP on outcomes
-                            </p>
-                            <p className="text-[8px] uppercase tracking-[0.3em] text-accent mt-1.5 font-black">
-                                {seasonContext?.activeSeason?.name ?? seasonContext?.upcomingSeason?.name ?? 'Season TBD'} • Week {seasonContext?.currentWeek ?? 1}
+                        <div className="space-y-4 max-w-md">
+                            <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Error Loading Predictions</h3>
+                            <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs leading-relaxed">
+                                {user ? (message?.text || 'There was an issue loading prediction data. Please try again.') : 'You must be authenticated to view prediction markets.'}
                             </p>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl md:rounded-2xl px-4 md:px-6 py-2 md:py-3 shadow-md grow md:grow-0">
-                            <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Your Wallet</p>
-                            <div className="flex items-center gap-2 mt-0.5 md:mt-1">
-                                <Zap size={12} className="text-accent" />
-                                <span className="text-xs md:text-sm font-black text-[var(--foreground)] italic">{profile?.total_kp.toLocaleString() || 0} KP</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
-                    {/* Active Predictions List */}
-                    <div className="lg:col-span-2 space-y-4 md:space-y-6 order-2 lg:order-1">
-                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">Current Bets</h3>
-
-                        {predictions.length === 0 ? (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl md:rounded-[2.5rem] py-16 md:p-20 text-center flex flex-col items-center">
-                                <Target size={32} className="text-[var(--muted)] opacity-30 mb-4 md:mb-6" />
-                                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)]">No active wagers. Place your first bet.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                                {predictions.map(pred => (
-                                    <motion.div key={pred.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-4 md:p-6 flex gap-3 md:gap-4 shadow-sm hover:border-accent/30 transition-all group">
-                                        <img src={pred.anime?.cover_image} className="w-10 h-14 md:w-12 md:h-16 object-cover rounded-lg md:rounded-xl" alt={pred.anime?.title_romaji || 'Anime cover'} />
-                                        <div className="grow min-w-0 space-y-1.5 md:space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className={`px-1.5 py-0.5 rounded text-[6px] md:text-[7px] font-black uppercase ${pred.is_resolved ? 'bg-[var(--surface-hover)] text-[var(--muted)]' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'}`}>
-                                                    {pred.is_resolved ? 'COMPLETED' : 'PENDING'}
-                                                </span>
-                                                <span className="text-[9px] md:text-[10px] font-black text-[var(--muted)] italic group-hover:text-[var(--foreground)] transition-colors">{pred.kp_wager} KP</span>
-                                            </div>
-                                            <h4 className="text-[10px] font-black uppercase truncate text-[var(--foreground)] italic leading-tight" title={pred.anime?.title_english || pred.anime?.title_romaji}>
-                                                {pred.anime?.title_english || pred.anime?.title_romaji}
-                                            </h4>
-                                            <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest line-clamp-1 italic opacity-60">
-                                                {pred.prediction_type.replace('_', ' ')}
-                                            </p>
-                                            {pred.is_resolved && (
-                                                <div className={`mt-1 md:mt-2 flex items-center gap-1.5 md:gap-2 ${pred.is_correct ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {pred.is_correct ? <Trophy size={8} /> : <AlertCircle size={8} />}
-                                                    <span className="text-[7px] md:text-[8px] font-black uppercase italic">
-                                                        {pred.is_correct ? `WON +${pred.kp_earned} KP` : 'LOSS'}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
+                        {!user && (
+                            <button onClick={() => router.push('/login')} className="px-10 py-5 bg-accent text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl">
+                                Log In to Predict
+                            </button>
                         )}
                     </div>
-
-                    {/* Place Bet Sidebar */}
-                    <div className="space-y-4 md:space-y-6 order-1 lg:order-2">
-                        <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] px-1">The Sportsbook</h3>
-
-                        <div className="bg-[var(--surface)] p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-[var(--border)] space-y-6 md:space-y-8 shadow-2xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-6 md:p-8 opacity-[0.03] md:opacity-5 group-hover:opacity-10 transition-opacity text-[var(--muted)] pointer-events-none"><Dice6 size={100} /></div>
-
-                            <div className="space-y-5 md:space-y-6 relative z-10">
-                                <div className="space-y-2">
-                                    <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Pick Target</label>
-                                    <select
-                                        value={selectedAnimeId || ''}
-                                        onChange={e => setSelectedAnimeId(parseInt(e.target.value))}
-                                        className="w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] rounded-xl px-4 py-3 text-[10px] md:text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-accent shadow-inner"
-                                    >
-                                        {trendingAnime.map(a => <option key={a.id} value={a.id}>{a.title_english || a.title_romaji}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Bet Type</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[
-                                            { id: 'SCORE_OVER', label: 'Score Over' },
-                                            { id: 'WILL_BREAK', label: 'On Hiatus?' },
-                                            { id: 'TOP_5', label: 'Hot Top 5' },
-                                            { id: 'USER_DUEL', label: 'User Duel' }
-                                        ].map(t => (
-                                            <button key={t.id} onClick={() => setWagerType(t.id)} className={`py-2.5 md:py-3 rounded-xl border text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${wagerType === t.id ? 'bg-accent border-accent text-white shadow-lg shadow-accent/20' : 'bg-[var(--background)] border border-[var(--border)] hover:border-accent/40 text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
-                                                {t.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Wager Amount</label>
-                                        <span className="text-[9px] md:text-[10px] font-black text-accent italic">{amount} KP</span>
-                                    </div>
-                                    <input
-                                        type="range" min="100" max="5000" step="100"
-                                        value={amount} onChange={e => setAmount(parseInt(e.target.value))}
-                                        className="w-full h-1 md:h-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg appearance-none cursor-pointer accent-accent"
-                                    />
-                                </div>
-
-                                <div className="pt-2 md:pt-4">
-                                    {message && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`mb-4 p-3 rounded-lg text-[7px] md:text-[8px] font-black uppercase italic ${message.type === 'ok' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-                                            {message.text}
-                                        </motion.div>
-                                    )}
-                                    <button
-                                        onClick={handlePredict}
-                                        disabled={submitting || !user}
-                                        className="w-full py-4 md:py-5 bg-accent text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-2 md:gap-3 disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {submitting ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                                        {submitting ? 'SEALING...' : 'LOCK PREDICTION'}
-                                    </button>
-                                </div>
-                            </div>
+                );
+            case "no_active_season":
+                return (
+                    <div className="flex flex-col items-center justify-center py-48 space-y-8 bg-[var(--surface)] rounded-[3rem] border border-dashed border-[var(--border)] p-12 text-center shadow-xl">
+                        <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center text-accent ring-4 ring-accent/10">
+                            <Dice6 size={40} />
                         </div>
-
-                        <div className="p-4 md:p-6 bg-accent/5 rounded-2xl md:rounded-[2rem] border border-accent/10 flex items-start gap-3">
-                            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl bg-accent/20 flex items-center justify-center text-accent shrink-0"><Info size={14} /></div>
-                            <p className="text-[8px] md:text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest leading-relaxed">Predictions settle every Friday at 12:00 UTC. Correct wagers pay out 2.5x - 5.0x based on active odds.</p>
+                        <div className="space-y-4 max-w-md">
+                            <h3 className="text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Offseason</h3>
+                            <p className="text-[var(--muted)] font-bold uppercase tracking-widest text-xs leading-relaxed">
+                                {message?.text || 'There is no active season for predictions yet. Check back soon!'}
+                            </p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </AppShell>
-    );
+                );
+            case "success":
+                if (!predictionsData) return null; // Should not happen with current logic, but a safeguard
+
+                const userExistingPredictionIds = (() => {
+                    const ids = new Set<string>();
+                    predictionsData?.active_user_predictions.forEach(p => ids.add(p.prediction_event.id));
+                    predictionsData?.past_user_predictions.forEach(p => ids.add(p.prediction_event.id));
+                    return ids;
+                })();
+
+                const displayedPredictions = (() => {
+                    switch (currentFilter) {
+                        case 'upcoming':
+                            return predictionsData.upcoming_events.filter(
+                                (event) => !userExistingPredictionIds.has(event.id)
+                            );
+                        case 'active_bets': return predictionsData.active_user_predictions;
+                        case 'past_bets': return predictionsData.past_user_predictions;
+                        default: return [];
+                    }
+                })();
+
+                return (
+                    <div className="space-y-6 md:space-y-10">
+                        {/* Header HUD */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+                            <div className="flex items-center gap-3 md:gap-4">
+                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-accent/20 flex items-center justify-center text-accent shrink-0">
+                                    <Dice6 size={20} />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">Predictions</h1>
+                                    <p className="text-[9px] md:text-xs text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
+                                        Wager KP on upcoming anime outcomes
+                                    </p>
+                                </div>
+                            </div>
+                            <KPBalanceDisplay balance={predictionsData.total_kp} />
+                        </div>
+
+                        {message && (
+                            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className={cn(
+                                "p-4 rounded-xl border text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-3",
+                                message.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' :
+                                message.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
+                                'bg-blue-500/10 border-blue-500/20 text-blue-500' // Info message
+                            )}>
+                                {message.type === 'success' ? <CheckCircle size={14} /> : message.type === 'error' ? <AlertCircle size={14} /> : <Info size={14} />}
+                                {message.text}
+                            </motion.div>
+                        )}
+
+                        <div className="space-y-8 md:space-y-10">
+                            {/* Filter Buttons */}
+                            <PredictionCategoryFilters currentFilter={currentFilter} onFilterChange={setCurrentFilter} />
+
+                            {/* Predictions List */}
+                            <PredictionList
+                                type={currentFilter}
+                                predictions={displayedPredictions}
+                                userKpBalance={predictionsData.total_kp}
+                                onPlaceBet={handlePlaceBet}
+                                isPlacingBet={isPlacingBet}
+                                userExistingPredictionIds={userExistingPredictionIds}
+                            />
+                        </div>
+                    </div>
+                );
+        }
+    };
+
+    return <AppShell>{renderContent()}</AppShell>;
 }

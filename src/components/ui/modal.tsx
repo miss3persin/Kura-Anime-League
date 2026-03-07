@@ -1,10 +1,9 @@
 "use client";
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { cn } from "@/lib/utils";
 
 interface ModalProps {
@@ -17,48 +16,56 @@ interface ModalProps {
 }
 
 export const Modal = ({ isOpen, onClose, title, children, showClose = true, maxWidth = "max-w-lg" }: ModalProps) => {
-    return (
+    if (typeof document === "undefined") {
+        return null;
+    }
+
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+                <div className="fixed inset-0 z-[60] overflow-y-auto">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-md"
                     />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className={cn("relative bg-[var(--surface)] border border-[var(--border)] w-full rounded-2xl md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar", maxWidth)}
-                    >
-                        <div className="absolute top-0 right-0 p-4 md:p-8">
-                            {showClose && (
-                                <button
-                                    onClick={onClose}
-                                    className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer p-1"
-                                >
-                                    <X size={20} />
-                                </button>
+                    <div className="relative flex min-h-full items-start justify-center p-4 md:p-6 lg:p-8">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                            className={cn(
+                                "relative mt-4 mb-6 w-full rounded-2xl md:mt-8 md:mb-8 md:rounded-[2.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 md:p-10 shadow-2xl overflow-hidden max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)] overflow-y-auto custom-scrollbar",
+                                maxWidth
                             )}
-                        </div>
-
-                        <div className="space-y-4 md:space-y-6">
-                            <h3 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] pr-8 md:pr-0">
-                                {title}
-                            </h3>
-                            <div className="text-[var(--muted)] font-medium leading-relaxed text-sm md:text-base">
-                                {children}
+                        >
+                            <div className="sticky top-3 z-10 mb-4 flex justify-end pointer-events-none md:top-4 md:mb-6">
+                                {showClose && (
+                                    <button
+                                        onClick={onClose}
+                                        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--surface)]/95 p-2 text-[var(--muted)] shadow-lg backdrop-blur-sm transition-colors hover:text-[var(--foreground)]"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                )}
                             </div>
-                        </div>
 
-                        {/* Accent decorative line */}
-                        <div className="absolute bottom-0 left-0 w-full h-1 bg-accent" />
-                    </motion.div>
+                            <div className="space-y-4 md:space-y-6">
+                                <h3 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] pr-8 md:pr-0">
+                                    {title}
+                                </h3>
+                                <div className="text-[var(--muted)] font-medium leading-relaxed text-sm md:text-base">
+                                    {children}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
             )}
         </AnimatePresence>
+        ,
+        document.body
     );
 };

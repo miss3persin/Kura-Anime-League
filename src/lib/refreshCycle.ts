@@ -6,6 +6,7 @@ import { ensureIdentityMappingForAnime } from '@/lib/identityMapping';
 import { recordLiveChartStatuses } from '@/lib/livechart';
 import type { LiveChartWriteResult } from '@/lib/livechart';
 import { getTmdbImageUrl, searchTmdbSeries } from '@/lib/tmdb';
+import { appendCharacterPriceHistory, calcCharacterPrice, getCharacterPriceChange, type CharacterPriceHistoryEntry } from '@/lib/character-market';
 
 const JOB_NAME = 'anime_cache_refresh';
 
@@ -19,6 +20,13 @@ export interface RefreshCycleResult {
   jobId?: string;
   steps: RefreshStep[];
 }
+
+type ExistingCharacterRow = {
+  id: number;
+  price: number | null;
+  favorites: number | null;
+  price_history: CharacterPriceHistoryEntry[] | null;
+};
 
 export async function runRefreshCycle(initiatedBy?: string): Promise<RefreshCycleResult> {
   const { data: job, error: jobError } = await supabaseAdmin
@@ -79,7 +87,42 @@ export async function runRefreshCycle(initiatedBy?: string): Promise<RefreshCycl
 
     console.log(`Generated ${uniqueCharacters.length} unique character payloads from ${allSeasonalAnime.length} anime.`);
     if (uniqueCharacters.length) {
-      const { error: charErr } = await supabaseAdmin.from('character_cache').upsert(uniqueCharacters, { onConflict: 'id' });
+      const { data: existingCharacterRows } = await supabaseAdmin
+        .from('character_cache')
+        .select('id, price, favorites, price_history')
+        .in('id', uniqueCharacters.map((char) => char.id));
+
+      const existingCharacterMap = new Map<number, ExistingCharacterRow>(
+        ((existingCharacterRows as ExistingCharacterRow[] | null) ?? []).map((row) => [row.id, row])
+      );
+      const now = new Date().toISOString();
+      const dynamicCharacterPayloads = uniqueCharacters.map((char) => {
+        const existing = existingCharacterMap.get(char.id);
+        const nextPrice = calcCharacterPrice(
+          {
+            favorites: char.favorites ?? 0,
+            role: char.role,
+            gender: char.gender
+          },
+          Math.random,
+          {
+            previousPrice: existing?.price ?? char.price,
+            previousFavorites: existing?.favorites ?? char.favorites
+          }
+        );
+        const priceHistory = appendCharacterPriceHistory(existing?.price_history ?? [], nextPrice, now);
+        const priceChange = getCharacterPriceChange(priceHistory, nextPrice);
+
+        return {
+          ...char,
+          price: nextPrice,
+          price_change: priceChange.percent,
+          price_history: priceHistory,
+          updated_at: now
+        };
+      });
+
+      const { error: charErr } = await supabaseAdmin.from('character_cache').upsert(dynamicCharacterPayloads, { onConflict: 'id' });
       if (charErr) console.error('Character upsert error:', charErr);
     }
 

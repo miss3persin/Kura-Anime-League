@@ -11,6 +11,8 @@ import { supabase } from "@/lib/supabase/client";
 import { SeasonPhaseBanner } from "@/components/ui/season-banner";
 import { Modal } from "@/components/ui/modal";
 
+import { getHistoryChange, AnimeHypeHistoryEntry } from '@/lib/hype';
+
 interface Anime {
   id: number;
   title_romaji: string;
@@ -21,13 +23,14 @@ interface Anime {
   description: string;
   cost_kp: number;
   hype_change: number;
+  hype_history?: AnimeHypeHistoryEntry[];
 }
 
 const DEFAULT_HERO_CONTENT: HeroContent = {
   visible: true,
   headline: "KAL Spring 2026",
-  subtitle: "Cour kicks off April 1, 2026 — ready for drafts",
-  cta: "Get hyped",
+  subtitle: "The new season starts April 1, 2026",
+  cta: "View draft",
   ctaLink: "/draft"
 };
 
@@ -90,8 +93,6 @@ export default function Home() {
         
         // Target Season Logic: Prioritize upcoming/draft season for main content
         const targetSeasonId = sInfo.upcomingSeason?.id || sInfo.activeSeason?.id;
-        const activeSeasonId = sInfo.activeSeason?.id;
-
         // 1. Fetch Main Content (Carousel & Trending) - focused on the "Target" season
         let mainQuery = supabase.from('anime_cache').select('*');
         if (targetSeasonId) {
@@ -103,16 +104,14 @@ export default function Home() {
 
         if (mainError) throw mainError;
 
-        // 2. Fetch Market Pulse Content (Mix of active and upcoming)
-        let pulseQuery = supabase.from('anime_cache').select('*');
-        if (activeSeasonId && targetSeasonId && activeSeasonId !== targetSeasonId) {
-            pulseQuery = pulseQuery.in('season_uuid', [activeSeasonId, targetSeasonId]);
-        } else if (targetSeasonId) {
-            pulseQuery = pulseQuery.eq('season_uuid', targetSeasonId);
+        const pulseResponse = await fetch('/api/market?sort=change&direction=desc&limit=10', {
+          cache: 'no-store'
+        });
+        const pulsePayload = await pulseResponse.json().catch(() => ({}));
+        if (!pulseResponse.ok) {
+          throw new Error(`Market API error: ${pulsePayload.error || pulseResponse.statusText}`);
         }
-        const { data: pulseData } = await pulseQuery
-          .limit(10)
-          .order('hype_change', { ascending: false });
+        const pulseData = Array.isArray(pulsePayload.items) ? pulsePayload.items : [];
 
         if (mainData) {
           // Filter for shows that actually have a banner. If none, we use posters.
@@ -570,7 +569,7 @@ export default function Home() {
 
         {(showPlaybook || showMarketPulse) && (
           <>
-            {/* Market Pulse & Game Guide */}
+            {/* Show Trends & Game Guide */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
               {showPlaybook && (
                 <div className="lg:col-span-2 space-y-8 md:space-y-10">
@@ -580,38 +579,38 @@ export default function Home() {
                     </div>
                     <div className="relative z-10 space-y-6 md:space-y-8">
                       <div className="space-y-1 md:space-y-2">
-                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Playbook</p>
-                        <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Fresh Tactics</h3>
+                        <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-accent">Guide</p>
+                        <h3 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">How It Works</h3>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <div className="space-y-2 md:space-y-4">
-                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Pick your roster</p>
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Build your lineup</p>
                           <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
                             Draft five shows within the 20,000 KP budget. Balance hype and value.
                             <span className="text-accent italic"> Drafts lock Friday at 12:00 UTC.</span>
                           </p>
                         </div>
                         <div className="space-y-2 md:space-y-4">
-                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">02. Track the buzz</p>
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">02. Follow the trends</p>
                           <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
                             KP arrives from AniList scores, momentum swings, and community chatter. Leaderboards refresh every Monday.
                           </p>
                         </div>
                         <div className="space-y-2 md:space-y-4">
-                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">03. Ride the swings</p>
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">03. Watch price changes</p>
                           <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
-                            KP prices update daily. A sleeper snagged for 1,500 KP could spike to 4,000 KP, boosting squad value.
+                            KP prices update daily. A sleeper snagged for 1,500 KP could spike to 4,000 KP, boosting your team value.
                           </p>
                         </div>
                         <div className="space-y-2 md:space-y-4">
-                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">04. Bet on the week</p>
+                          <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">04. Make predictions</p>
                           <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
-                            Use extra KP in Prediction Markets to call weekly twists and score bonus points.
+                            Use extra KP in Predictions to make calls on the week and earn bonus points.
                           </p>
                         </div>
                       </div>
                       <NeonButton onClick={() => router.push('/draft')} className="w-full md:w-fit py-3.5 md:py-4 px-10 text-[10px]">
-                        Start Draft
+                        Start drafting
                       </NeonButton>
                     </div>
                   </div>
@@ -620,13 +619,18 @@ export default function Home() {
               {showMarketPulse && (
                 <div className="space-y-6 md:space-y-8">
                   <div className="flex justify-between items-center px-1 md:px-2">
-                    <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Market Pulse</h3>
+                    <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Show Trends</h3>
                     <div className="px-2 py-1 bg-green-500/10 rounded-lg text-green-500 text-[7px] md:text-[8px] font-black animate-pulse">
                       LIVE FEED
                     </div>
                   </div>
                   <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl md:rounded-[2.5rem] divide-y divide-[var(--border)] overflow-hidden shadow-lg md:shadow-xl">
-                    {marketPulseAnime.slice(0, 5).map((anime, i) => (
+                    {marketPulseAnime.slice(0, 5).map((anime, i) => {
+                      const rangeMs = 1000 * 60 * 60 * 24; // 24 hours
+                      const currentPrice = anime.cost_kp;
+                      const change = getHistoryChange(anime.hype_history, rangeMs, currentPrice);
+                      const isPositive = change.percent >= 0;
+                      return (
                       <div key={i} className="p-4 md:p-5 flex items-center gap-3 md:gap-4 hover:bg-[var(--surface-hover)] transition-all group">
                         <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                           <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0" />
@@ -641,13 +645,14 @@ export default function Home() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[10px] md:text-[11px] font-black text-[var(--foreground)] italic leading-none mb-1">{anime.cost_kp} KP</p>
-                          <p className={`text-[7px] md:text-[8px] font-black flex items-center justify-end gap-1 ${anime.hype_change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {anime.hype_change >= 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
-                            {anime.hype_change > 0 ? '+' : ''}{anime.hype_change || 0}%
+                          <p className={`text-[7px] md:text-[8px] font-black flex items-center justify-end gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                            {isPositive ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                            {isPositive ? '+' : ''}{change.percent}%
                           </p>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                     <button
                       onClick={() => router.push('/hype')}
                       className="w-full p-4 md:p-5 text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-[var(--muted)] hover:text-accent transition-colors bg-[var(--surface-hover)]/30"
@@ -746,7 +751,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Character Intel</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-accent">Character Details</p>
               <div className="text-[11px] leading-relaxed text-[var(--muted)] font-medium max-h-48 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-accent/20">
                 {selectedCharacter?.about 
                   ? selectedCharacter.about
@@ -763,7 +768,7 @@ export default function Home() {
                       .replace(/\n\s*\n/g, '\n') // Multiple newlines
                       .trim()
                       .slice(0, 1000) + (selectedCharacter.about.length > 1000 ? "..." : "")
-                  : "Tactical data for this recruit is currently being processed by league scouts."
+                  : "Character details are still loading."
                 }
               </div>
             </div>
@@ -774,7 +779,7 @@ export default function Home() {
                 <p className="text-xl font-black text-white italic tracking-tighter">{selectedCharacter?.price.toLocaleString()} KP</p>
               </div>
               <div className="flex items-end justify-end">
-                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Dossier</NeonButton>
+                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Details</NeonButton>
               </div>
             </div>
           </div>
@@ -783,3 +788,5 @@ export default function Home() {
     </AppShell>
   );
 }
+
+

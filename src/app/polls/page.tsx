@@ -75,7 +75,7 @@ export default function PollsPage() {
             <div className="space-y-8 md:space-y-12 pb-20">
                 <div className="text-center space-y-2 md:space-y-3 px-4">
                     <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)] leading-tight">Community Polls</h2>
-                    <p className="text-[var(--muted)] text-[9px] md:text-sm font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">Your vote decides the seasonal winner</p>
+                    <p className="text-[var(--muted)] text-[9px] md:text-sm font-bold uppercase tracking-[0.2em] md:tracking-[0.3em]">Vote on this season&apos;s matchups and questions</p>
                 </div>
 
                 {polls.length === 0 ? (
@@ -140,7 +140,7 @@ export default function PollsPage() {
                                         </button>
                                     </div>
                                     <p className="text-[9px] md:text-[10px] text-[var(--muted)] font-black uppercase tracking-widest text-center relative z-10">
-                                        {total.toLocaleString()} FANS HAVE VOTED
+                                        {total.toLocaleString()} VOTES
                                     </p>
                                 </motion.div>
                             );
@@ -151,3 +151,4 @@ export default function PollsPage() {
         </AppShell>
     );
 }
+

@@ -42,7 +42,7 @@ export default function LoginPage() {
         if (error) throw error;
 
         setModalTitle("SIGNUP SUCCESSFUL");
-        setModalMessage("A verification archive has been sent to your email. Confirm your entry to join the league.");
+        setModalMessage("A verification email has been sent. Confirm your account to continue.");
         setIsModalOpen(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -87,7 +87,7 @@ export default function LoginPage() {
         <form onSubmit={handleAuth} className="space-y-4 relative z-10">
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] leading-relaxed">
-              System Error: {error}
+              Error: {error}
             </div>
           )}
 
@@ -118,9 +118,9 @@ export default function LoginPage() {
             <div className="flex items-center justify-between px-1">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input type="checkbox" className="w-3.5 h-3.5 accent-accent rounded border-[var(--border)] bg-[var(--background)] cursor-pointer" />
-                <span className="text-[8px] md:text-[9px] text-[var(--muted)] font-black uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors">Stay logged</span>
+                <span className="text-[8px] md:text-[9px] text-[var(--muted)] font-black uppercase tracking-widest group-hover:text-[var(--foreground)] transition-colors">Stay signed in</span>
               </label>
-              <button type="button" className="text-[8px] md:text-[9px] font-black text-[var(--muted)] hover:text-[var(--foreground)] transition-colors uppercase tracking-widest cursor-pointer">Forgot?</button>
+              <button type="button" className="text-[8px] md:text-[9px] font-black text-[var(--muted)] hover:text-[var(--foreground)] transition-colors uppercase tracking-widest cursor-pointer">Forgot password?</button>
             </div>
           )}
 
@@ -128,13 +128,13 @@ export default function LoginPage() {
             className="w-full py-3 md:py-3.5 text-[10px] md:text-xs flex justify-center items-center"
             disabled={loading}
           >
-            {loading ? <Loader2 className="animate-spin" size={16} /> : (isSignUp ? "Confirm Entry" : "Establish Link")}
+            {loading ? <Loader2 className="animate-spin" size={16} /> : (isSignUp ? "Create Account" : "Log In")}
           </NeonButton>
         </form>
 
         <div className="text-center pt-1 relative z-10">
           <p className="text-[9px] md:text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest">
-            {isSignUp ? "Already a member?" : "New operative?"}
+            {isSignUp ? "Already have an account?" : "Need an account?"}
             <button
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-[var(--foreground)] font-black hover:underline ml-1 cursor-pointer"
@@ -170,3 +170,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

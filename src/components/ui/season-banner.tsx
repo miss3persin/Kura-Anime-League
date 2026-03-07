@@ -41,7 +41,7 @@ const PHASE_CONFIG: Record<string, {
         icon: Zap,
         badge: '🟣 SEASON LIVE',
         title: (s) => `${s.upcomingSeason?.name ?? s.activeSeason?.name ?? 'Season'} — Week ${s.currentWeek}/${s.totalWeeks}`,
-        subtitle: () => 'Scores update every Friday. Track your picks on the Hype Index.',
+        subtitle: () => 'Scores update every Friday. Track your picks on Show Trends.',
     },
     transfer_review: {
         color: '#FFD700',
@@ -50,7 +50,7 @@ const PHASE_CONFIG: Record<string, {
         icon: RefreshCw,
         badge: '🟡 TRANSFER REVIEW',
         title: (s) => `${s.upcomingSeason?.name ?? s.activeSeason?.name ?? 'Season'} Ended`,
-        subtitle: () => 'Decide which picks carry over. The new season draft opens soon.',
+        subtitle: () => 'Review your picks and prepare for the next draft window.',
     },
     pre_draft: {
         color: '#64748b',
@@ -59,7 +59,7 @@ const PHASE_CONFIG: Record<string, {
         icon: Calendar,
         badge: '📅 COMING SOON',
         title: (s) => `${s.upcomingSeason?.name ?? 'Next Season'} Draft Opens Soon`,
-        subtitle: () => 'Browse upcoming shows and plan your team in advance.',
+        subtitle: () => 'Browse upcoming shows and plan ahead.',
     },
     off_season: {
         color: '#64748b',
@@ -68,7 +68,7 @@ const PHASE_CONFIG: Record<string, {
         icon: CheckCircle,
         badge: '⬜ OFF SEASON',
         title: () => 'Between Seasons',
-        subtitle: () => 'No active season. The next draft window will open soon — stay tuned.',
+        subtitle: () => 'No active season right now. The next draft window will open soon.',
     },
     ended: {
         color: '#64748b',
@@ -77,7 +77,7 @@ const PHASE_CONFIG: Record<string, {
         icon: CheckCircle,
         badge: '✅ SEASON COMPLETE',
         title: (s) => `${s.activeSeason?.name ?? 'Season'} Complete`,
-        subtitle: () => 'Awards have been distributed. The next draft window opens soon.',
+        subtitle: () => 'Results are final. The next draft window opens soon.',
     },
 };
 
@@ -125,8 +125,8 @@ export function SeasonPhaseBanner({ showTimelineEntries = true }: SeasonPhaseBan
     const Icon = cfg.icon;
 
     const ctaLabel = info.phase === 'draft_open' ? 'Build Your Team' :
-        info.phase === 'season_live' ? 'View Hype Index' :
-            info.phase === 'transfer_review' ? 'Manage Squad' :
+        info.phase === 'season_live' ? 'View Show Trends' :
+            info.phase === 'transfer_review' ? 'Manage Team' :
                 info.phase === 'pre_draft' ? 'Browse Shows' : null;
     const ctaHref = info.phase === 'draft_open' ? '/draft' :
         info.phase === 'season_live' ? '/hype' :
@@ -256,3 +256,5 @@ export function SeasonPhaseBanner({ showTimelineEntries = true }: SeasonPhaseBan
         </>
     );
 }
+
+

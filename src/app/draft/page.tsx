@@ -231,11 +231,11 @@ export default function DraftPage() {
           upcomingSeasonId: seasonInfo?.upcomingSeason?.id as string | number | null,
           upcomingSeasonName: seasonInfo?.upcomingSeason?.name
         });
-        showAlert("Sync Complete", `Archived data synchronized.`);
+        showAlert("Sync Complete", `Season data refreshed.`);
       }
     } catch (err) {
       console.error(err);
-      showAlert("Sync Failed", "Could not connect to the seasonal server.");
+      showAlert("Sync Failed", "Could not refresh season data.");
     } finally {
       setSyncing(false);
     }
@@ -247,11 +247,11 @@ export default function DraftPage() {
       setBudget(prev => prev + anime.cost_kp);
     } else {
       if (selectedAnimeIds.length >= 5) {
-        showAlert("Draft Error", "Maximum team size is 5 shows.");
+        showAlert("Selection Error", "Maximum team size is 5 shows.");
         return;
       }
       if (budget < anime.cost_kp) {
-        showAlert("Insufficient KP", "Not enough KuraPoints for this series.");
+        showAlert("Insufficient KP", "Not enough KP for this series.");
         return;
       }
       setSelectedAnimeIds(prev => [...prev, anime.id]);
@@ -266,7 +266,7 @@ export default function DraftPage() {
         setBudget(prev => prev + char.price);
       } else {
         if (budget < char.price) {
-          showAlert("Insufficient KP", "Not enough KuraPoints to recruit this star.");
+          showAlert("Insufficient KP", "Not enough KP for this character.");
           return;
         }
         if (starCharId) {
@@ -283,7 +283,7 @@ export default function DraftPage() {
         setBudget(prev => prev + char.price);
       } else {
         if (budget < char.price) {
-          showAlert("Insufficient KP", "Not enough KuraPoints for this waifu/husbando.");
+          showAlert("Insufficient KP", "Not enough KP for this character.");
           return;
         }
         if (waifuId) {
@@ -303,7 +303,7 @@ export default function DraftPage() {
       return;
     }
     if (selectedAnimeIds.length === 0) {
-      showAlert("Draft Picks Needed", "Select at least one series before locking.");
+      showAlert("Picks Needed", "Select at least one series before saving.");
       return;
     }
 
@@ -337,7 +337,7 @@ export default function DraftPage() {
         await supabase.from('character_picks').insert(charPicks);
       }
 
-      showAlert("Team Deployed", "Your tactical lineup has been synchronized with the league servers. 🏮");
+      showAlert("Team Saved", "Your team has been saved.");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error(err);
@@ -428,7 +428,7 @@ export default function DraftPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-1 md:px-4">
           <div className="flex gap-1.5 p-1 bg-[var(--surface)] rounded-xl md:rounded-2xl border border-[var(--border)] shadow-sm">
             <button onClick={() => setActiveTab('anime')} className={cn(getTabButtonClass('anime'), "px-4 md:px-6 py-2.5 md:py-2 grow md:grow-0")}>Anime Series</button>
-            <button onClick={() => setActiveTab('characters')} className={cn(getTabButtonClass('characters'), "px-4 md:px-6 py-2.5 md:py-2 grow md:grow-0")}>Star Recruits</button>
+            <button onClick={() => setActiveTab('characters')} className={cn(getTabButtonClass('characters'), "px-4 md:px-6 py-2.5 md:py-2 grow md:grow-0")}>Characters</button>
           </div>
 
           <div className="flex items-center gap-3 md:gap-4">
@@ -541,7 +541,7 @@ export default function DraftPage() {
                         Recruit
                       </button>
                       <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
-                        {char.role === 'Waifu' ? 'Waifu' : char.role === 'Husbando' ? 'Husbando' : 'Select'}
+                        {char.role === 'Waifu' ? 'Pick' : char.role === 'Husbando' ? 'Pick' : 'Select'}
                       </button>
                     </div>
                   </div>
@@ -642,7 +642,7 @@ export default function DraftPage() {
                 <p className="text-xl font-black text-white italic tracking-tighter">{selectedCharacter?.price.toLocaleString()} KP</p>
               </div>
               <div className="flex items-end justify-end">
-                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Intel</NeonButton>
+                <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Details</NeonButton>
               </div>
             </div>
           </div>
@@ -651,3 +651,4 @@ export default function DraftPage() {
     </AppShell>
   );
 }
+

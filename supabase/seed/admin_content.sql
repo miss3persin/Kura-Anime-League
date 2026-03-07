@@ -3,7 +3,7 @@ INSERT INTO public.admin_content (key, value)
 VALUES
   (
     'hero_banner',
-    '{"visible": true, "headline": "KAL Spring 2026", "subtitle": "Next cour starts April 1, 2026", "cta": "Get hyped", "ctaLink": "/draft"}'
+    '{"visible": true, "headline": "KAL Spring 2026", "subtitle": "The new season starts April 1, 2026", "cta": "View draft", "ctaLink": "/draft"}'
   ),
   (
     'admin_display_config',
@@ -14,3 +14,4 @@ VALUES
     '{"visible": false, "message": "", "ctaLabel": "", "ctaLink": ""}'
   )
 ON CONFLICT (key) DO NOTHING;
+
