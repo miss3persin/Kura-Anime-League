@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { AppShell } from "@/components/ui/app-shell";
 import { NeonButton } from "@/components/ui/neon-button";
-import { Heart, Coffee, X } from "lucide-react";
+import { Heart, Coffee, X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
@@ -94,30 +94,68 @@ export default function SupportPage() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.92, y: 16 }}
                   transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                  className="relative w-full max-w-md bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] p-10 shadow-2xl overflow-hidden pointer-events-auto"
+                  className="relative w-full max-w-lg bg-[var(--surface)] border border-[var(--border)] rounded-[2.5rem] p-8 shadow-2xl overflow-hidden pointer-events-auto"
                 >
                   <div className="absolute -top-16 -right-16 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
                   <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
                   <button
                     onClick={handleClose}
-                    className="absolute top-6 right-6 w-9 h-9 rounded-full bg-[var(--surface-hover)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer z-10"
+                    className="absolute top-5 right-5 w-9 h-9 rounded-full bg-[var(--surface-hover)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] transition-all cursor-pointer z-10"
                   >
                     <X size={16} />
                   </button>
 
-                  <div className="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent/25 relative z-10">
-                    <Heart size={24} className="text-white fill-white" />
+                  <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-accent/25 relative z-10">
+                    <Heart size={20} className="text-white fill-white" />
                   </div>
 
-                  <div className="space-y-3 mb-8 relative z-10">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Support the Developer</p>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-none">
+                  <div className="space-y-2 mb-5 relative z-10">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Support the Developer...if You Want</p>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter italic font-outfit text-[var(--foreground)] leading-tight">
                       Keep KAL<br />Alive ❤️
                     </h2>
-                    <p className="text-[var(--muted)] font-medium text-sm leading-relaxed pt-1">
+                    <p className="text-[var(--muted)] font-medium text-[13px] leading-relaxed pt-1">
                       KAL is a labor of love. If you enjoy using the platform and want to see it grow, consider supporting development. Every bit helps keep the servers running and the coffee flowing!
                     </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/60 p-3.5 mb-5 relative z-10 overflow-hidden">
+                    <div className="absolute -top-12 -right-12 w-24 h-24 bg-accent/10 rounded-full blur-2xl pointer-events-none" />
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[var(--muted)]">Direct Line</p>
+                    <p className="text-[11px] font-black uppercase tracking-wide text-[var(--foreground)] mt-1">
+                      Prefer a quick DM? Reach me here.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                      <a
+                        href="http://t.me/miss3persin"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 transition-all hover:border-accent/50 hover:bg-accent/10"
+                      >
+                        <span className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center group-hover:bg-accent/25">
+                          <Send size={16} />
+                        </span>
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--foreground)]">Telegram</p>
+                          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[var(--muted)]">@miss3persin</p>
+                        </div>
+                      </a>
+                      <a
+                        href="https://x.com/miss3persin"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 transition-all hover:border-accent/50 hover:bg-accent/10"
+                      >
+                        <span className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center group-hover:bg-accent/25">
+                          <X size={16} />
+                        </span>
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--foreground)]">X / Twitter</p>
+                          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[var(--muted)]">@miss3persin</p>
+                        </div>
+                      </a>
+                    </div>
                   </div>
 
                   <div className="space-y-3 relative z-10">
@@ -125,7 +163,7 @@ export default function SupportPage() {
                       href="https://buymeacoffee.com/miss3persin"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full inline-flex items-center justify-center gap-3 py-4 bg-accent text-white font-black uppercase tracking-widest rounded-2xl hover:opacity-90 transition-all cursor-pointer shadow-xl shadow-accent/20"
+                      className="w-full inline-flex items-center justify-center gap-3 py-3.5 bg-accent text-white font-black uppercase tracking-widest rounded-2xl hover:opacity-90 transition-all cursor-pointer shadow-xl shadow-accent/20"
                     >
                       <Coffee size={18} /> Buy me a coffee
                     </a>

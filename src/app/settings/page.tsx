@@ -19,6 +19,10 @@ export default function SettingsPage() {
     const [user, setUser] = useState<SettingsUser | null>(null);
     const [username, setUsername] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [notificationPrefs, setNotificationPrefs] = useState<{ pushEnabled: boolean; emailEnabled: boolean } | null>(null);
+    const [loadingPrefs, setLoadingPrefs] = useState(true);
+    const [savingPrefs, setSavingPrefs] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState("");
     const [modalMessage, setModalMessage] = useState("");
@@ -31,6 +35,7 @@ export default function SettingsPage() {
                 return;
             }
             setUser(session.user);
+            setAccessToken(session.access_token ?? null);
 
             const { data } = await supabase
                 .from("profiles")
@@ -41,6 +46,33 @@ export default function SettingsPage() {
             if (data) {
                 setUsername(data.username || "");
                 setAvatarUrl(data.avatar_url || "");
+            }
+            if (session.access_token) {
+                setLoadingPrefs(true);
+                try {
+                    const response = await fetch("/api/notifications", {
+                        headers: {
+                            Authorization: `Bearer ${session.access_token}`
+                        }
+                    });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(payload.error || "Unable to load notification preferences.");
+                    }
+                    const preferences = payload.preferences ?? {};
+                    setNotificationPrefs({
+                        pushEnabled: preferences.push_enabled ?? true,
+                        emailEnabled: preferences.email_enabled ?? true
+                    });
+                } catch (err: unknown) {
+                    console.error("Failed to load notification preferences", err);
+                    setNotificationPrefs({ pushEnabled: true, emailEnabled: true });
+                } finally {
+                    setLoadingPrefs(false);
+                }
+            } else {
+                setNotificationPrefs({ pushEnabled: true, emailEnabled: true });
+                setLoadingPrefs(false);
             }
             setLoading(false);
         };
@@ -80,6 +112,44 @@ export default function SettingsPage() {
         router.push("/");
     };
 
+    const handleTogglePreference = async (key: "pushEnabled" | "emailEnabled") => {
+        if (!accessToken || !notificationPrefs || savingPrefs) return;
+        const nextValue = !notificationPrefs[key];
+        const nextPrefs = { ...notificationPrefs, [key]: nextValue };
+        setNotificationPrefs(nextPrefs);
+        setSavingPrefs(true);
+        try {
+            const response = await fetch("/api/notifications", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({ [key]: nextValue })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || "Unable to update notification preferences.");
+            }
+            if (payload.preferences) {
+                setNotificationPrefs({
+                    pushEnabled: payload.preferences.push_enabled ?? nextPrefs.pushEnabled,
+                    emailEnabled: payload.preferences.email_enabled ?? nextPrefs.emailEnabled
+                });
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Update failed.";
+            setNotificationPrefs((prev) =>
+                prev ? { ...prev, [key]: !nextValue } : prev
+            );
+            setModalTitle("UPDATE FAILED");
+            setModalMessage(message);
+            setIsModalOpen(true);
+        } finally {
+            setSavingPrefs(false);
+        }
+    };
+
     if (loading) {
         return (
             <AppShell>
@@ -97,7 +167,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border)] pb-6 md:pb-8 gap-4">
                     <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter font-outfit text-[var(--foreground)]">Settings</h2>
                     <div className="px-4 md:px-5 py-1.5 md:py-2 bg-[var(--surface)] border border-[var(--border)] rounded-full text-[var(--foreground)] text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-sm w-fit">
-                        KAL Stable v2.4.0
+                        KAL Stable v1.0.0
                     </div>
                 </div>
 
@@ -146,21 +216,73 @@ export default function SettingsPage() {
 
                         <div className="space-y-4 md:space-y-6">
                             <h3 className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] text-[var(--muted)] ml-1">Preferences</h3>
-                            <div className="bg-[var(--surface-hover)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-6 md:space-y-8 opacity-50 select-none shadow-sm">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3 md:gap-4">
-                                        <div className="p-2.5 md:p-3 bg-[var(--background)] rounded-lg md:rounded-xl border border-[var(--border)] text-[var(--muted)]">
-                                            <Bell size={18} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-base md:text-lg font-bold text-[var(--foreground)]">Draft Reminders</h4>
-                                            <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-tighter">Coming soon</p>
-                                        </div>
+                            <div className="bg-[var(--surface-hover)] border border-[var(--border)] rounded-2xl md:rounded-3xl p-6 md:p-8 space-y-5 md:space-y-6 shadow-sm">
+                                <div className="flex items-center gap-3 md:gap-4">
+                                    <div className="p-2.5 md:p-3 bg-[var(--background)] rounded-lg md:rounded-xl border border-[var(--border)] text-[var(--muted)]">
+                                        <Bell size={18} />
                                     </div>
-                                    <div className="w-10 md:w-14 h-6 md:h-8 bg-[var(--border)] rounded-full relative">
-                                        <div className="absolute left-1 top-1 w-4 h-4 md:w-6 md:h-6 bg-[var(--muted)] rounded-full shadow-sm"></div>
+                                    <div>
+                                        <h4 className="text-base md:text-lg font-bold text-[var(--foreground)]">Notifications</h4>
+                                        <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-tighter">
+                                            Choose how KAL keeps you updated
+                                        </p>
                                     </div>
                                 </div>
+
+                                {loadingPrefs ? (
+                                    <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-[0.3em]">
+                                        Loading notification settings...
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {[
+                                            {
+                                                key: "pushEnabled" as const,
+                                                label: "Push alerts",
+                                                description: "Instant alerts for KP changes, scores, and platform news."
+                                            },
+                                            {
+                                                key: "emailEnabled" as const,
+                                                label: "Weekly email digest",
+                                                description: "Weekly recap with ranks, highlights, and tips."
+                                            }
+                                        ].map((option) => {
+                                            const enabled = notificationPrefs?.[option.key] ?? true;
+                                            return (
+                                                <button
+                                                    key={option.key}
+                                                    onClick={() => handleTogglePreference(option.key)}
+                                                    disabled={savingPrefs}
+                                                    className={`w-full rounded-xl border px-4 py-3 text-left flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.3em] transition-all ${
+                                                        enabled
+                                                            ? "border-emerald-500/40 bg-emerald-500/10 hover:border-emerald-400"
+                                                            : "border-white/10 bg-white/5 hover:border-white/40"
+                                                    } ${savingPrefs ? "opacity-60 cursor-not-allowed" : ""}`}
+                                                >
+                                                    <div className="flex-1 space-y-1 text-left">
+                                                        <p className="font-black">{option.label}</p>
+                                                        <p className="text-[8px] font-normal uppercase tracking-[0.25em] text-[var(--muted)] leading-tight">
+                                                            {option.description}
+                                                        </p>
+                                                    </div>
+                                                    <span
+                                                        className={`text-[8px] font-black uppercase tracking-[0.3em] ${
+                                                            enabled ? "text-emerald-300" : "text-red-400"
+                                                        }`}
+                                                    >
+                                                        {enabled ? "On" : "Off"}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {savingPrefs && (
+                                    <p className="text-[9px] md:text-xs text-[var(--muted)] uppercase font-black tracking-[0.3em]">
+                                        Saving notification settings...
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

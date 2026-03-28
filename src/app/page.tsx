@@ -207,7 +207,25 @@ export default function Home() {
 
   const [topPerformers, setTopPerformers] = useState<{ rank: number; name: string; kp: string; avatar: string }[]>([]);
   const [topCharacters, setTopCharacters] = useState<{ id: number; name: string; image: string; role: string; favorites: number; about?: string; anime_title?: string; price: number; gender?: string }[]>([]);
+  const [topCharactersPool, setTopCharactersPool] = useState<typeof topCharacters>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<typeof topCharacters[0] | null>(null);
+
+  const shuffleCharacters = <T,>(items: T[]) => {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const pickNextCharacters = (pool: typeof topCharacters, currentIds: Set<number>) => {
+    if (pool.length <= 3) return pool.slice(0, 3);
+    const fresh = pool.filter((item) => !currentIds.has(item.id));
+    if (fresh.length >= 3) return fresh.slice(0, 3);
+    const shuffled = shuffleCharacters(pool);
+    return shuffled.slice(0, 3);
+  };
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -215,6 +233,7 @@ export default function Home() {
         const { data, error } = await supabase
           .from('profiles')
           .select('username, total_kp, avatar_url')
+          .eq('role', 'player')
           .order('total_kp', { ascending: false })
           .limit(4);
 
@@ -252,13 +271,15 @@ export default function Home() {
               .select('*')
               .in('anime_id', animeIds)
               .order('favorites', { ascending: false })
-              .limit(3);
+              .limit(12);
             
             if (!charError && charData && charData.length > 0) {
-              setTopCharacters(charData.map(c => ({
+              const pool = shuffleCharacters(charData.map(c => ({
                 ...c,
                 anime_title: animeMap[c.anime_id] || "Seasonal Series"
               })));
+              setTopCharactersPool(pool);
+              setTopCharacters(pool.slice(0, 3));
               return;
             }
           }
@@ -269,10 +290,12 @@ export default function Home() {
           .from('character_cache')
           .select('*')
           .order('favorites', { ascending: false })
-          .limit(3);
+          .limit(12);
 
         if (!error && data) {
-          setTopCharacters(data.map(c => ({ ...c, anime_title: "Featured Series" })));
+          const pool = shuffleCharacters(data.map(c => ({ ...c, anime_title: "Featured Series" })));
+          setTopCharactersPool(pool);
+          setTopCharacters(pool.slice(0, 3));
         }
       } catch (err) {
         console.error("Failed to fetch top characters:", err);
@@ -284,6 +307,18 @@ export default function Home() {
       fetchTopCharacters();
     }
   }, [seasonInfo]);
+
+  useEffect(() => {
+    if (topCharactersPool.length <= 3) return;
+    const interval = setInterval(() => {
+      setTopCharacters((current) => {
+        const currentIds = new Set(current.map((c) => c.id));
+        return pickNextCharacters(topCharactersPool, currentIds);
+      });
+    }, 12000);
+
+    return () => clearInterval(interval);
+  }, [topCharactersPool]);
 
   return (
     <AppShell>

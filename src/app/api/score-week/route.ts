@@ -3,6 +3,7 @@ import { fetchAiringStatuses } from '@/lib/animeSources';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireServiceSecret } from '@/lib/service-auth';
 import { syncHypeMarket } from '@/lib/server/hype-sync';
+import { createNotifications } from '@/lib/notifications';
 
 const EPISODE_POINTS = 100;
 const TRENDING_BONUS = 50;
@@ -198,6 +199,7 @@ export async function POST(request: Request) {
         if (scoreError) throw scoreError;
 
         // 6. Update profiles total_kp + team season_kp + season_scores table
+        const notificationRows = [];
         for (const team of teams) {
             const earned = teamScoreMap[team.id] || 0;
             // All-time KP
@@ -213,7 +215,19 @@ export async function POST(request: Request) {
                 p_season_id: season_id,
                 p_amount: earned
             });
+
+            if (earned !== 0) {
+                notificationRows.push({
+                    user_id: team.user_id,
+                    channel: 'push' as const,
+                    title: `Week ${week_number} results`,
+                    body: `Your team earned ${earned.toLocaleString()} KP this week.`,
+                    kp_delta: earned,
+                    metadata: { season_id, week_number, team_id: team.id }
+                });
+            }
         }
+        await createNotifications(notificationRows);
 
         // 7. Refresh market data using the shared hype sync so weekly scoring
         // does not overwrite prices with a different formula.

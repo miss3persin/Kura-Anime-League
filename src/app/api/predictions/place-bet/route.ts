@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { normalizePredictionOptions } from "@/lib/predictions";
+import { createNotification } from "@/lib/notifications";
 
 export const dynamic = 'force-dynamic';
 
@@ -116,6 +117,15 @@ export async function POST(request: NextRequest) {
 
             return NextResponse.json({ error: "Failed to place prediction.", details: insertError.message }, { status: 500 });
         }
+
+        await createNotification({
+            user_id: userId,
+            channel: "push",
+            title: "Prediction placed",
+            body: `You wagered ${wagerAmount.toLocaleString()} KP on a prediction.`,
+            kp_delta: -Math.abs(wagerAmount),
+            metadata: { event_id: predictionEvent.id, season_id: predictionEvent.season_id }
+        });
 
         return NextResponse.json({ message: "Prediction placed successfully." }, { status: 200 });
 

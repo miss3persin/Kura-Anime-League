@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-data";
 import { normalizePredictionOptions, mapPredictionEventRow } from "@/lib/predictions";
+import { createNotification } from "@/lib/notifications";
 import type { AdminPredictionEventInput, PredictionOption } from "@/lib/types/predictions";
 
 type PredictionEventRow = {
@@ -143,6 +144,17 @@ const syncPredictionResolution = async (
         throw new Error(kpError.message);
       }
     }
+
+    await createNotification({
+      user_id: prediction.user_id,
+      channel: "push",
+      title: isCorrect ? "Prediction won" : "Prediction missed",
+      body: isCorrect
+        ? `Nice! You earned ${kpEarned.toLocaleString()} KP from a prediction.`
+        : "Your prediction did not hit this time.",
+      kp_delta: isCorrect ? kpEarned : 0,
+      metadata: { event_id: eventId }
+    });
   }
 };
 

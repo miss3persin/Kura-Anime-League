@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getAdminContent, upsertAdminContent, logAdminAction } from "@/lib/admin-data";
+import { broadcastSystemNotification } from "@/lib/notifications";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const HERO_KEY = "hero_banner";
@@ -87,6 +88,23 @@ export async function POST(request: Request) {
       leveling: levelingResult
     }
   });
+
+  if (
+    updatedSections.includes("announcement") &&
+    announcementResult?.visible &&
+    announcementResult?.message &&
+    announcementResult.message !== currentAnnouncement?.message
+  ) {
+    await broadcastSystemNotification({
+      title: "Platform announcement",
+      body: announcementResult.message,
+      metadata: {
+        ctaLabel: announcementResult.ctaLabel ?? null,
+        ctaLink: announcementResult.ctaLink ?? null,
+        tone: announcementResult.tone ?? null
+      }
+    });
+  }
 
   return NextResponse.json({ hero: heroResult, config: configResult, announcement: announcementResult, leveling: levelingResult });
 }

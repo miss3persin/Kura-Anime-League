@@ -13,6 +13,7 @@ interface Profile {
     total_kp: number;
     tier: string;
     level: number;
+    role?: string | null;
 }
 
 interface PlayerRow extends Profile {
@@ -69,7 +70,8 @@ export default function RankingsPage() {
             // Fetch all-time
             const { data: alltime } = await supabase
                 .from('profiles')
-                .select('id, username, avatar_url, total_kp, tier, level')
+                .select('id, username, avatar_url, total_kp, tier, level, role')
+                .eq('role', 'player')
                 .order('total_kp', { ascending: false })
                 .limit(50);
 
@@ -88,7 +90,7 @@ export default function RankingsPage() {
                 // Season leaderboard
                 const { data: ss } = await supabase
                     .from('season_scores')
-                    .select('*, profiles(id, username, avatar_url, total_kp, tier, level)')
+                    .select('*, profiles(id, username, avatar_url, total_kp, tier, level, role)')
                     .eq('season_id', season.id)
                     .order('total_season_kp', { ascending: false })
                     .limit(50);
@@ -98,7 +100,7 @@ export default function RankingsPage() {
                 // Weekly (last week's scores)
                 const { data: ws } = await supabase
                     .from('weekly_scores')
-                    .select('team_id, score, week_number, teams(user_id, profiles(id, username, avatar_url, total_kp, tier, level))')
+                    .select('team_id, score, week_number, teams(user_id, profiles(id, username, avatar_url, total_kp, tier, level, role))')
                     .eq('week_number', season.week_number ?? 1)
                     .order('score', { ascending: false })
                     .limit(50);
@@ -113,22 +115,26 @@ export default function RankingsPage() {
     }, []);
 
     const alltimeData = alltimePlayers;
-    const seasonData = useMemo(() => seasonScores.map(s => ({
-        id: s.profiles?.id,
-        username: s.profiles?.username,
-        avatar_url: s.profiles?.avatar_url,
-        kp: s.total_season_kp,
-        tier: s.profiles?.tier,
-        badge: s.badge_tier ?? undefined,
-    })), [seasonScores]);
+    const seasonData = useMemo(() => seasonScores
+        .filter(s => s.profiles?.role === 'player')
+        .map(s => ({
+            id: s.profiles?.id,
+            username: s.profiles?.username,
+            avatar_url: s.profiles?.avatar_url,
+            kp: s.total_season_kp,
+            tier: s.profiles?.tier,
+            badge: s.badge_tier ?? undefined,
+        })), [seasonScores]);
 
-    const weeklyData = useMemo(() => weeklyScores.map(w => ({
-        id: w.teams?.profiles?.id,
-        username: w.teams?.profiles?.username,
-        avatar_url: w.teams?.profiles?.avatar_url,
-        kp: w.score,
-        tier: w.teams?.profiles?.tier,
-    })), [weeklyScores]);
+    const weeklyData = useMemo(() => weeklyScores
+        .filter(w => w.teams?.profiles?.role === 'player')
+        .map(w => ({
+            id: w.teams?.profiles?.id,
+            username: w.teams?.profiles?.username,
+            avatar_url: w.teams?.profiles?.avatar_url,
+            kp: w.score,
+            tier: w.teams?.profiles?.tier,
+        })), [weeklyScores]);
 
     const renderPodiumAndTable = (
         players: { id: string; username: string; avatar_url: string; kp: number; tier?: string; badge?: string }[]

@@ -7,6 +7,10 @@ import { SeasonProvider } from "@/components/season-provider";
 export const metadata: Metadata = {
   title: "Kura Anime League | KAL",
   description: "The seasonal fantasy anime platform for true fans.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png"
+  }
 };
 
 export default function RootLayout({

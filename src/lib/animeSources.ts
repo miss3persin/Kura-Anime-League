@@ -63,44 +63,57 @@ query ($ids: [Int]) {
 `;
 
 const SEARCH_DELAY_MS = 220;
+const AIRING_STATUS_CHUNK_SIZE = 50;
+
+function chunkIds(ids: number[], size: number) {
+  const chunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export async function fetchAiringStatuses(ids: number[]): Promise<Record<number, AiringStatus>> {
   if (!ids?.length) return {};
   let statuses: Record<number, AiringStatus> = {};
 
-  try {
-    const { data } = await fetchAniList<AniListAiringResponse>(
-      GET_AIRING_STATUS,
-      { ids },
-      { endpoint: 'score-week-airing-status', metadata: { idsCount: ids.length } }
-    );
+  const idChunks = chunkIds(ids, AIRING_STATUS_CHUNK_SIZE);
+  for (const chunk of idChunks) {
+    try {
+      const { data } = await fetchAniList<AniListAiringResponse>(
+        GET_AIRING_STATUS,
+        { ids: chunk },
+        { endpoint: 'score-week-airing-status', metadata: { idsCount: chunk.length } }
+      );
 
-    for (const media of data.Page.media) {
-      statuses[media.id] = {
-        id: media.id,
-        status: media.status,
-        nextAiringEpisode: media.nextAiringEpisode ?? undefined,
-        trending: media.trending ?? 0,
-        averageScore: media.averageScore ?? null,
-        popularity: media.popularity ?? null,
-        source: 'AniList'
-      };
-    }
+      for (const media of data.Page.media) {
+        statuses[media.id] = {
+          id: media.id,
+          status: media.status,
+          nextAiringEpisode: media.nextAiringEpisode ?? undefined,
+          trending: media.trending ?? 0,
+          averageScore: media.averageScore ?? null,
+          popularity: media.popularity ?? null,
+          source: 'AniList'
+        };
+      }
 
-    void logApiRateLimit({
-      source: 'AniList',
-      endpoint: 'score-week-airing-status',
-      status: 200,
-      success: true,
-      message: 'AniList primary path used',
-      metadata: { idsCount: ids.length, source: 'AniList' }
-    }).catch(() => undefined);
-  } catch (error) {
-    if (error instanceof AniListRateLimitError) {
-      console.warn('AniList rate limit reached, falling back to Kitsu/Jikan/cache', error);
-      statuses = await fetchFallbackStatuses(ids);
-    } else {
-      throw error;
+      void logApiRateLimit({
+        source: 'AniList',
+        endpoint: 'score-week-airing-status',
+        status: 200,
+        success: true,
+        message: 'AniList primary path used',
+        metadata: { idsCount: chunk.length, source: 'AniList' }
+      }).catch(() => undefined);
+    } catch (error) {
+      if (error instanceof AniListRateLimitError) {
+        console.warn('AniList rate limit reached, falling back to Kitsu/Jikan/cache', error);
+        const fallback = await fetchFallbackStatuses(chunk);
+        statuses = { ...statuses, ...fallback };
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -180,15 +193,25 @@ async function applyLiveChartOverrides(ids: number[], statuses: Record<number, A
 
   const { data: overrides } = await supabaseAdmin
     .from('livechart_breaks')
-    .select('anime_id, status, next_airing_at, source')
+    .select('anime_id, status, next_airing_at, source, updated_at')
     .in('anime_id', ids);
 
   if (!overrides?.length) return;
+
+  const now = Date.now();
+  const maxAgeHours = 48;
+  const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
 
   for (const entry of overrides) {
     const animeId = entry.anime_id;
     const existing = statuses[animeId];
     const nextAiringSeconds = entry.next_airing_at ? Math.floor(new Date(entry.next_airing_at).getTime() / 1000) : undefined;
+    const updatedAtMs = entry.updated_at ? new Date(entry.updated_at).getTime() : 0;
+    const isManual = entry.source === 'LiveChart';
+    const isFresh = updatedAtMs > 0 && (now - updatedAtMs) <= maxAgeMs;
+
+    if (!entry.status) continue;
+    if (!isManual && !isFresh) continue;
 
     statuses[animeId] = {
       id: animeId,

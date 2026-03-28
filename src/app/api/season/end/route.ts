@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireServiceSecret } from '@/lib/service-auth';
+import { createNotifications } from '@/lib/notifications';
 
 const PAYOUT_PERCENT = 0.1;
 const BADGE_BONUS: Record<string, number> = {
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
         });
 
         const payoutResults = [];
+        const payoutNotifications = [];
         for (const candidate of Array.from(candidateMap.values()).sort((a, b) => (b.total_season_kp - a.total_season_kp))) {
             if (alreadyPaid.has(candidate.user_id)) continue;
 
@@ -145,7 +147,21 @@ export async function POST(request: Request) {
                 badge_tier: candidate.badge_tier,
                 final_rank: candidate.final_rank
             });
+
+            payoutNotifications.push({
+                user_id: candidate.user_id,
+                channel: 'push' as const,
+                title: 'Season payout',
+                body: `You received ${award.toLocaleString()} KP for season rewards.`,
+                kp_delta: award,
+                metadata: {
+                    season_id,
+                    badge_tier: candidate.badge_tier,
+                    final_rank: candidate.final_rank
+                }
+            });
         }
+        await createNotifications(payoutNotifications);
 
         // 5. Mark season as ended
         await supabaseAdmin
