@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
@@ -57,6 +58,25 @@ export default function LoginPage() {
       setError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    if (oauthLoading || loading) return;
+    setError("");
+    setOauthLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/profile`
+      }
+    });
+
+    if (error) {
+      const message = error instanceof Error ? error.message : "Google sign-in failed.";
+      setError(message);
+      setOauthLoading(false);
     }
   };
 
@@ -126,11 +146,40 @@ export default function LoginPage() {
 
           <NeonButton
             className="w-full py-3 md:py-3.5 text-[10px] md:text-xs flex justify-center items-center"
-            disabled={loading}
+            disabled={loading || oauthLoading}
           >
             {loading ? <Loader2 className="animate-spin" size={16} /> : (isSignUp ? "Create Account" : "Log In")}
           </NeonButton>
         </form>
+
+        <div className="relative z-10 flex items-center gap-3 text-[9px] md:text-[10px] text-[var(--muted)] font-bold uppercase tracking-[0.2em]">
+          <span className="flex-1 h-px bg-[var(--border)]" />
+          <span>or</span>
+          <span className="flex-1 h-px bg-[var(--border)]" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleAuth}
+          disabled={loading || oauthLoading}
+          className="relative z-10 w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 md:py-3.5 text-[10px] md:text-xs font-black uppercase tracking-[0.18em] shadow-inner hover:border-accent hover:-translate-y-[1px] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {oauthLoading ? <Loader2 className="animate-spin" size={16} /> : (
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              className="w-4 h-4"
+              viewBox="0 0 48 48"
+            >
+              <path fill="#EA4335" d="M24 9.5c3.15 0 5.98 1.09 8.22 3.22l6.14-6.14C34.9 2.45 29.85 0 24 0 14.7 0 6.72 5.25 2.7 12.9l7.8 6.06C12.27 13.05 17.67 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.5c0-1.63-.15-3.2-.42-4.73H24v9h12.97c-.56 3-2.23 5.54-4.76 7.26l7.54 5.86C44.55 38.1 46.98 31.86 46.98 24.5z"/>
+              <path fill="#34A853" d="M10.5 28.96c-1.05-3.15-1.05-6.77 0-9.92l-7.8-6.06C-1.26 18.3-1.26 29.7 2.7 37.1l7.8-6.06z"/>
+              <path fill="#FBBC05" d="M24 47.5c6.3 0 11.59-2.07 15.46-5.62l-7.54-5.86c-2.1 1.4-4.8 2.23-7.92 2.23-6.33 0-11.73-3.55-14.5-8.88l-7.8 6.06C6.72 42.75 14.7 47.5 24 47.5z"/>
+              <path fill="none" d="M0 0h48v48H0z"/>
+            </svg>
+          )}
+          <span>{isSignUp ? "Sign up with Google" : "Continue with Google"}</span>
+        </button>
 
         <div className="text-center pt-1 relative z-10">
           <p className="text-[9px] md:text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest">

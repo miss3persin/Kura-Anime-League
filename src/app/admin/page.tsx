@@ -49,6 +49,10 @@ type ContentPayload = {
     ctaLabel?: string;
     ctaLink?: string;
   };
+  leveling: {
+    base_kp?: number;
+    growth_rate?: number;
+  };
 };
 
 type Season = {
@@ -138,6 +142,10 @@ const DEFAULT_CONTENT: ContentPayload = {
     message: "",
     ctaLabel: "",
     ctaLink: "",
+  },
+  leveling: {
+    base_kp: 1500,
+    growth_rate: 1.18,
   },
 };
 
@@ -370,6 +378,7 @@ export default function AdminPage() {
           hero: { ...DEFAULT_CONTENT.hero, ...(contentPayload.hero ?? {}) },
           config: { ...DEFAULT_CONTENT.config, ...(contentPayload.config ?? {}) },
           announcement: { ...DEFAULT_CONTENT.announcement, ...(contentPayload.announcement ?? {}) },
+          leveling: { ...DEFAULT_CONTENT.leveling, ...(contentPayload.leveling ?? {}) },
         },
         seasons: Array.isArray(seasonsPayload.seasons) ? seasonsPayload.seasons : [],
         polls: Array.isArray(pollsPayload.polls) ? pollsPayload.polls : [],
@@ -916,6 +925,43 @@ export default function AdminPage() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="min-w-0 space-y-4 rounded-[1.5rem] border border-white/8 bg-[var(--background)] p-4 sm:p-5">
+              <h3 className="text-lg font-black uppercase tracking-tight text-[var(--foreground)]">Leveling system</h3>
+              <p className="text-xs text-[var(--muted)]">
+                Base KP sets the early speed. Growth rate scales each next level for a slower climb later.
+              </p>
+              <Field label="Base KP (level 2 requirement)">
+                <input
+                  type="number"
+                  min={100}
+                  step={50}
+                  value={contentDraft.leveling.base_kp ?? 1500}
+                  onChange={(event) =>
+                    setContentDraft((current) => ({
+                      ...current,
+                      leveling: { ...current.leveling, base_kp: Number(event.target.value || 0) },
+                    }))
+                  }
+                  className={inputClassName}
+                />
+              </Field>
+              <Field label="Growth rate (slower later)">
+                <input
+                  type="number"
+                  min={1.01}
+                  step={0.01}
+                  value={contentDraft.leveling.growth_rate ?? 1.18}
+                  onChange={(event) =>
+                    setContentDraft((current) => ({
+                      ...current,
+                      leveling: { ...current.leveling, growth_rate: Number(event.target.value || 0) },
+                    }))
+                  }
+                  className={inputClassName}
+                />
+              </Field>
             </div>
           </div>
           <div className="mt-5 flex justify-end">

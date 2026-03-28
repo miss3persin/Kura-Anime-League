@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { SeasonPhaseBanner } from "@/components/ui/season-banner";
 import { Modal } from "@/components/ui/modal";
+import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 
 import { getHistoryChange, AnimeHypeHistoryEntry } from '@/lib/hype';
 
@@ -61,6 +62,7 @@ const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementTone, string> = {
 
 export default function Home() {
   const router = useRouter();
+  const { seasonInfo } = useSeasonTimeline();
   const [carouselAnime, setCarouselAnime] = useState<Anime[]>([]);
   const [trendingShows, setTrendingShows] = useState<Anime[]>([]);
   const [marketPulseAnime, setMarketPulseAnime] = useState<Anime[]>([]);
@@ -82,17 +84,11 @@ export default function Home() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!seasonInfo) return;
       setLoading(true);
       try {
-        const res = await fetch("/api/seasons/current");
-        if (!res.ok) {
-            const errBody = await res.json().catch(() => ({}));
-            throw new Error(`API error: ${res.status} - ${errBody.error || res.statusText}`);
-        }
-        const sInfo = await res.json();
-        
         // Target Season Logic: Prioritize upcoming/draft season for main content
-        const targetSeasonId = sInfo.upcomingSeason?.id || sInfo.activeSeason?.id;
+        const targetSeasonId = seasonInfo.draftSeason?.id || seasonInfo.upcomingSeason?.id || seasonInfo.activeSeason?.id;
         // 1. Fetch Main Content (Carousel & Trending) - focused on the "Target" season
         let mainQuery = supabase.from('anime_cache').select('*');
         if (targetSeasonId) {
@@ -142,7 +138,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, []);
+  }, [seasonInfo]);
 
   useEffect(() => {
     if (disableWelcomeModal) {
@@ -238,14 +234,7 @@ export default function Home() {
 
     const fetchTopCharacters = async () => {
       try {
-        // First get current/upcoming season
-        const res = await fetch("/api/seasons/current");
-        let targetSeasonId = null;
-        if (res.ok) {
-            const sInfo = await res.json();
-            // Prioritize upcoming season for recruits
-            targetSeasonId = sInfo.upcomingSeason?.id || sInfo.activeSeason?.id;
-        }
+        const targetSeasonId = seasonInfo?.draftSeason?.id || seasonInfo?.upcomingSeason?.id || seasonInfo?.activeSeason?.id;
 
         if (targetSeasonId) {
           // Get anime for this season
@@ -291,8 +280,10 @@ export default function Home() {
     };
 
     fetchLeaderboard();
-    fetchTopCharacters();
-  }, []);
+    if (seasonInfo) {
+      fetchTopCharacters();
+    }
+  }, [seasonInfo]);
 
   return (
     <AppShell>
@@ -633,7 +624,11 @@ export default function Home() {
                       return (
                       <div key={i} className="p-4 md:p-5 flex items-center gap-3 md:gap-4 hover:bg-[var(--surface-hover)] transition-all group">
                         <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                          <img src={anime.cover_image} alt={`${anime.title_romaji} thumbnail`} className="w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0" />
+                          <img
+                            src={anime.cover_image}
+                            alt={`${anime.title_romaji} thumbnail`}
+                            className="w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl object-cover border border-[var(--border)] group-hover:border-accent/50 transition-all shrink-0"
+                          />
                           <div className="min-w-0">
                             <p className="text-[9px] md:text-[10px] font-black text-[var(--foreground)] uppercase truncate" title={anime.title_english || anime.title_romaji}>
                               {anime.title_english || anime.title_romaji}
@@ -681,7 +676,11 @@ export default function Home() {
                 {topPerformers.map((usr, i) => (
                   <div key={i} className="bg-[var(--surface-hover)] px-4 py-4 md:py-5 rounded-2xl md:rounded-[2rem] border border-[var(--border)] flex items-center gap-3 group hover:border-accent/30 transition-all cursor-default min-w-0 shadow-sm">
                     <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-black text-[9px] md:text-[10px] shrink-0 border border-accent/10">{usr.rank}</div>
-                    <img src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`} alt={`${usr.name} avatar`} className="w-8 h-8 md:w-9 md:h-9 rounded-full border border-accent/20 shrink-0" />
+                    <img
+                      src={usr.avatar.startsWith('http') ? usr.avatar : `https://api.dicebear.com/${usr.avatar}`}
+                      alt={`${usr.name} avatar`}
+                      className="w-8 h-8 md:w-9 md:h-9 rounded-full border border-accent/20 shrink-0"
+                    />
                     <div className="min-w-0 flex-1 leading-tight">
                       <p className="text-[10px] md:text-[11px] font-black text-[var(--foreground)] uppercase truncate" title={usr.name}>{usr.name}</p>
                       <p className="text-[7px] md:text-[8px] font-bold text-[var(--muted)] uppercase tracking-widest truncate">{usr.kp} Total KP</p>
@@ -710,7 +709,11 @@ export default function Home() {
                 className="bg-[var(--surface)] border border-[var(--border)] p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] space-y-4 md:space-y-6 group hover:border-accent/30 transition-all shadow-lg flex flex-col items-center text-center cursor-pointer min-w-0"
               >
                 <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border-4 border-[var(--border)] group-hover:border-accent/30 transition-all shadow-xl md:shadow-2xl">
-                  <img src={char.image} alt={char.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                  <img
+                    src={char.image}
+                    alt={char.name}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                  />
                 </div>
                 <div className="space-y-2 md:space-y-3 w-full">
                   <div className="space-y-1">
@@ -736,7 +739,13 @@ export default function Home() {
       >
         <div className="flex flex-col md:flex-row gap-10 items-start p-2">
           <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl shrink-0 bg-[var(--surface-hover)]">
-            <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
+            {selectedCharacter?.image && (
+              <img
+                src={selectedCharacter.image}
+                className="w-full h-full object-cover"
+                alt={selectedCharacter?.name ?? "Character"}
+              />
+            )}
           </div>
           <div className="grow space-y-6">
             <div className="flex flex-wrap gap-2">

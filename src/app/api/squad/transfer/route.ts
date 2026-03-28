@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
 
         // Calculate KP difference and transfer penalty
         const kpDiff = animeOut.cost_kp - animeIn.cost_kp; // Positive if selling more expensive anime
-        const freeLeft = team.free_transfers - team.transfers_used;
+        const freeAllowance = Math.max(team.free_transfers ?? 0, 3);
+        const freeLeft = freeAllowance - team.transfers_used;
         const penalty = freeLeft <= 0 ? 300 : 0; // Assuming 300 KP penalty for paid transfers
 
         const newRemainingKp = team.remaining_kp + kpDiff - penalty;
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update payload for the teams table
-        let updateTeamPayload: {
+        const updateTeamPayload: {
             remaining_kp: number;
             transfers_used: number;
             captain_anime_id?: number | null;
@@ -94,10 +95,11 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ message: "Transfer completed successfully." }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
         console.error("Error performing transfer:", error);
         return NextResponse.json(
-            { error: "An unexpected error occurred.", details: error.message },
+            { error: "An unexpected error occurred.", details: message },
             { status: 500 }
         );
     }

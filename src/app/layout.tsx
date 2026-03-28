@@ -1,6 +1,8 @@
+/* eslint-disable @next/next/no-page-custom-font */
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SeasonProvider } from "@/components/season-provider";
 
 export const metadata: Metadata = {
   title: "Kura Anime League | KAL",
@@ -26,7 +28,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SeasonProvider>{children}</SeasonProvider>
         </ThemeProvider>
       </body>
     </html>

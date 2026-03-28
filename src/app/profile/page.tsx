@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/ui/app-shell";
-import { Loader2, ServerCrash, Home } from "lucide-react";
+import { Loader2, ServerCrash } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { type ProfileData } from "@/app/api/profile/[id]/route";

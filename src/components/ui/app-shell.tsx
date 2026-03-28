@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Home, User, LayoutGrid, Trophy, Vote, Heart, Settings, Bell, Users, Menu, LogOut, Sun, Moon, Zap,
+    Home, User, LayoutGrid, Trophy, Vote, Heart, Settings, Bell, Users, LogOut, Sun, Moon, Zap,
     Shield, Activity, Dice6, ShieldCheck
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -10,11 +10,10 @@ import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { useTheme } from 'next-themes';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { PageHelpCenter } from "@/components/ui/page-help-center";
+import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 
 type NavItem = {
     id: string;
@@ -29,16 +28,6 @@ type ProfileState = {
     total_kp?: number;
     username?: string;
     avatar_url?: string;
-} | null;
-
-type SeasonInfo = {
-    phase?: string;
-    deadline?: string | null;
-    deadlineLabel?: string | null;
-    activeSeason?: { name?: string };
-    upcomingSeason?: { name?: string };
-    currentWeek?: number;
-    totalWeeks?: number;
 } | null;
 
 const NAV_ITEMS: NavItem[] = [
@@ -139,10 +128,9 @@ const formatTimeAgo = (timestamp?: string) => {
 
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [accentColor, setAccentColor] = useState('#AE00FF');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen] = useState(true);
     const [user, setUser] = useState<SupabaseUser | null>(null);
     const [profile, setProfile] = useState<ProfileState>(null);
-    const [seasonInfo, setSeasonInfo] = useState<SeasonInfo>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [authSession, setAuthSession] = useState<Session | null>(null);
     const [notifications, setNotifications] = useState<NotificationItem[]>(SAMPLE_NOTIFICATIONS);
@@ -155,6 +143,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [mounted, setMounted] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
+    const { seasonInfo } = useSeasonTimeline();
     const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
     const latestPush = notifications.find(n => n.channel === 'push');
     const latestEmail = notifications.find(n => n.channel === 'email');
@@ -286,7 +275,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         if (notificationPanelOpen) {
             setNotificationPanelOpen(false);
         }
-    }, [pathname]);
+    }, [pathname, notificationPanelOpen]);
 
     useEffect(() => {
         const fetchUserAndProfile = async () => {
@@ -316,14 +305,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             }
         };
 
-        const fetchSeason = async () => {
-            const res = await fetch('/api/seasons/current');
-            const data = (await res.json()) as SeasonInfo;
-            setSeasonInfo(data);
-        };
-
         fetchUserAndProfile();
-        fetchSeason();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
@@ -525,7 +507,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                             <span className="text-black font-black text-lg">K</span>
                         </div>
                         <div className="text-[9px] md:text-xs font-bold uppercase tracking-widest text-[var(--muted)] truncate max-w-[150px] sm:max-w-none">
-                            <span className="hidden sm:inline">Welcome to the League • </span><span className="text-[var(--foreground)]">{seasonInfo?.activeSeason?.name || seasonInfo?.upcomingSeason?.name || 'OFF-SEASON'}</span>
+                            <span className="hidden sm:inline">Welcome to the League • </span><span className="text-[var(--foreground)]">{seasonInfo?.draftSeason?.name || seasonInfo?.activeSeason?.name || seasonInfo?.upcomingSeason?.name || 'OFF-SEASON'}</span>
                         </div>
                     </div>
 

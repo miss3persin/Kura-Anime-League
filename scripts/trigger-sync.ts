@@ -23,8 +23,11 @@ async function trigger() {
     .delete()
     .eq('is_adult', true);
 
-  if (error) console.error('Purge error:', error);
-  else console.log(`Purged adult content records.`);
+  if (error) {
+    console.error('Purge error:', error);
+  } else {
+    console.log(`Purged ${count ?? 0} adult content records.`);
+  }
 }
 
 trigger().catch(console.error);

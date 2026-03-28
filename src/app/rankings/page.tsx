@@ -224,6 +224,7 @@ export default function RankingsPage() {
                                                     <img
                                                         src={player.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`}
                                                         alt={`${player.username} small avatar`}
+                                                        className="w-full h-full object-cover"
                                                     />
                                                 </div>
                                                 <span className="font-bold uppercase tracking-wider text-[11px] md:text-sm group-hover:text-[var(--foreground)] transition-colors truncate max-w-[100px] md:max-w-none">

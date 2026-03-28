@@ -19,19 +19,19 @@ export default function SupportPage() {
   const tiers = [
     {
       name: "Fan",
-      price: "$5",
+      price: "$??",
       perks: ["Support development", "Server maintenance", "Developer Coffee"],
       best: false
     },
     {
       name: "Supporter",
-      price: "$15",
+      price: "$???",
       perks: ["Support development", "Server maintenance", "Much more coffee"],
       best: true
     },
     {
       name: "Legend",
-      price: "$50",
+      price: "$??",
       perks: ["Deep appreciation", "Direct impact on growth", "Endless gratitude"],
       best: false
     },

@@ -133,9 +133,11 @@ export async function fetchKitsuAnimeById(id: string): Promise<KitsuAnimeResult 
   }
 }
 
-export function normalizeKitsuStatus(status: string): KitsuAnimeResult['status'] {
+function normalizeKitsuStatus(status: string): KitsuAnimeResult['status'] {
   return mapKitsuStatus(status);
 }
+
+export { normalizeKitsuStatus };
 
 function mapKitsuStatus(status: string): KitsuAnimeResult['status'] {
   switch (status) {

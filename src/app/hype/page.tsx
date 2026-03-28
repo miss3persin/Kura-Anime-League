@@ -76,9 +76,9 @@ function AnimeDetailModal({ anime, onClose }: AnimeModalProps) {
                 <div className="flex items-start justify-between gap-6 mb-6">
                     <div className="flex gap-6 items-center min-w-0">
                         <div className="relative w-24 h-[100px] shrink-0 overflow-hidden rounded-2xl border-2 border-black shadow-lg">
-                            <img 
-                                src={anime.cover_image} 
-                                alt={anime.title_english || anime.title_romaji} 
+                            <img
+                                src={anime.cover_image}
+                                alt={anime.title_english || anime.title_romaji}
                                 className="h-full w-full object-cover"
                             />
                         </div>
@@ -402,7 +402,11 @@ export default function HypeIndexPage() {
                                                                 <div key={anime.id} className="p-4 flex items-center gap-4 active:bg-accent/5 transition-colors" onClick={() => setSelectedAnime(anime)}>
                                                                     <div className="text-[9px] font-black text-[var(--muted)] w-4 text-center">{rowNumber}</div>
                                                                     <div className="w-10 h-14 shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
-                                                                        <img src={anime.cover_image} className="w-full h-full object-cover" alt="cover" />
+                                                                        <img
+                                                                            src={anime.cover_image}
+                                                                            className="w-full h-full object-cover"
+                                                                            alt="cover"
+                                                                        />
                                                                     </div>
                                                                     <div className="grow min-w-0">
                                                                         <h4 className="text-[11px] font-black uppercase text-[var(--foreground)] truncate italic leading-tight">{anime.title_english || anime.title_romaji}</h4>
@@ -476,7 +480,11 @@ export default function HypeIndexPage() {
                                                                         <td className="px-8 py-5 min-w-0">
                                                                             <div className="flex items-center gap-4">
                                                                                 <div className="relative w-10 h-14 shrink-0">
-                                                                                    <img src={anime.cover_image} alt={`${anime.title_romaji} cover`} className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500" />
+                                                                                    <img
+                                                                                        src={anime.cover_image}
+                                                                                        alt={`${anime.title_romaji} cover`}
+                                                                                        className="w-full h-full object-cover rounded-xl shadow-lg border border-[var(--border)] group-hover:scale-105 transition-transform duration-500"
+                                                                                    />
                                                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
                                                                                 </div>
                                                                                 <div className="min-w-0">

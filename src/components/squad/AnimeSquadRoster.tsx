@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { AnimeSquadCard } from './AnimeSquadCard';
 import { type SquadData } from '@/app/api/squad/route';
 

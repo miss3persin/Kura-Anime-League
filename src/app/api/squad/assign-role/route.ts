@@ -82,10 +82,11 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ message: successMessage }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
         console.error("Error assigning role:", error);
         return NextResponse.json(
-            { error: "An unexpected error occurred.", details: error.message },
+            { error: "An unexpected error occurred.", details: message },
             { status: 500 }
         );
     }

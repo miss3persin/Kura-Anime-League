@@ -12,13 +12,20 @@ interface SquadHeaderProps {
 export const SquadHeader: React.FC<SquadHeaderProps> = ({ squadData }) => {
   const {
     remaining_kp,
+    remaining_kp_calculated,
     transfers_used,
     free_transfers,
     weekly_score,
     current_week_number,
+    team_value_base,
+    team_value_boost,
+    team_value_total,
   } = squadData;
 
-  const totalSquadValue = squadData.anime_picks.reduce((sum, pick) => sum + pick.cost_kp, 0);
+  const totalSquadValue = team_value_total ?? squadData.anime_picks.reduce((sum, pick) => sum + pick.cost_kp, 0);
+  const baseValue = team_value_base ?? totalSquadValue;
+  const boostValue = team_value_boost ?? 0;
+  const kpLeft = remaining_kp_calculated ?? remaining_kp;
 
   return (
     <motion.div
@@ -37,7 +44,7 @@ export const SquadHeader: React.FC<SquadHeaderProps> = ({ squadData }) => {
             <div className="flex items-center gap-2 md:gap-3 mt-0.5 md:mt-1">
               <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Week {current_week_number || 1}</span>
               <div className="w-1 h-1 rounded-full bg-[var(--border)]"></div>
-              <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-accent">{remaining_kp?.toLocaleString() || 0} KP Left</span>
+              <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-accent">{kpLeft?.toLocaleString() || 0} KP Left</span>
             </div>
           </div>
         </div>
@@ -48,6 +55,11 @@ export const SquadHeader: React.FC<SquadHeaderProps> = ({ squadData }) => {
             <Coins size={16} className="text-yellow-500 mb-1" />
             <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">Team Value</p>
             <p className="text-xs md:text-sm font-black text-[var(--foreground)]">{totalSquadValue.toLocaleString()} KP</p>
+            {boostValue > 0 && (
+              <p className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-accent mt-1">
+                Base {baseValue.toLocaleString()} + Boost {boostValue.toLocaleString()}
+              </p>
+            )}
         </div>
         <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl md:rounded-2xl px-4 py-2.5 flex flex-col items-center justify-center shadow-sm">
             <ArrowLeftRight size={16} className="text-blue-500 mb-1" />

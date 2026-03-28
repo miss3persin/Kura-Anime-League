@@ -8,12 +8,10 @@ import {
   Loader2, Search, RefreshCw,
   Heart, LayoutGrid, Star, Info
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { useSeasonTimeline } from "@/lib/hooks/useSeasonTimeline";
 import { useCountdown } from "@/components/ui/season-banner";
-import type { SeasonInfoPayload } from "@/lib/hooks/useSeasonTimeline";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
@@ -49,12 +47,24 @@ interface DraftUser {
   email?: string;
 }
 
+type DraftTeamRow = {
+  id: number;
+  remaining_kp: number | null;
+  locked_at: string | null;
+  locked_anime_at: string | null;
+  locked_characters_at: string | null;
+};
+
 export default function DraftPage() {
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [characterList, setCharacterList] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isAnimeLocked, setIsAnimeLocked] = useState(false);
+  const [isCharactersLocked, setIsCharactersLocked] = useState(false);
+  const [lockedAnimeAt, setLockedAnimeAt] = useState<string | null>(null);
+  const [lockedCharactersAt, setLockedCharactersAt] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAnimeIds, setSelectedAnimeIds] = useState<number[]>([]);
   const [starCharId, setStarCharId] = useState<number | null>(null);
@@ -74,7 +84,7 @@ export default function DraftPage() {
         .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
         .join(" ")
     : "Pre Draft";
-  const seasonDisplayName = seasonInfo?.activeSeason?.name ?? seasonInfo?.upcomingSeason?.name ?? "Season";
+  const seasonDisplayName = seasonInfo?.draftSeason?.name ?? seasonInfo?.upcomingSeason?.name ?? seasonInfo?.activeSeason?.name ?? "Season";
   const deadlineLabel = seasonInfo?.deadlineLabel ?? "Draft Opens";
   const deadlineValue = seasonInfo?.deadline
     ? new Date(seasonInfo.deadline).toLocaleString("en-US", {
@@ -101,6 +111,8 @@ export default function DraftPage() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAnimeLockModalOpen, setIsAnimeLockModalOpen] = useState(false);
+  const [isCharLockModalOpen, setIsCharLockModalOpen] = useState(false);
 
   const showAlert = (title: string, message: string) => {
     setModalTitle(title);
@@ -164,14 +176,11 @@ export default function DraftPage() {
     }) => {
       setLoading(true);
       try {
-        const [animeForSeason, upcomingAnime] = await Promise.all([
+        const [animeForSeason] = await Promise.all([
           fetchAnimeBySeason(
             activeSeasonId ?? upcomingSeasonId,
             activeSeasonName ?? upcomingSeasonName
           ).catch((e) => { console.error("Anime fetch error:", e); return []; }),
-          upcomingSeasonId || upcomingSeasonName
-            ? fetchAnimeBySeason(upcomingSeasonId, upcomingSeasonName).catch((e) => { console.error("Upcoming anime fetch error:", e); return []; })
-            : Promise.resolve([]),
         ]);
 
         const animeIds = animeForSeason.map(a => a.id);
@@ -214,6 +223,45 @@ export default function DraftPage() {
         if (prof) {
           setBudget(prof.total_kp);
         }
+
+        if (targetId) {
+          const { data: existingTeam } = await supabase
+            .from('teams')
+            .select('id, remaining_kp, locked_at, locked_anime_at, locked_characters_at')
+            .eq('user_id', session.user.id)
+            .eq('season_id', targetId)
+            .maybeSingle();
+
+          if (existingTeam) {
+            const team = existingTeam as DraftTeamRow;
+            const animeLocked = Boolean(team.locked_anime_at || team.locked_at);
+            const charLocked = Boolean(team.locked_characters_at || team.locked_at);
+            setIsAnimeLocked(animeLocked);
+            setIsCharactersLocked(charLocked);
+            setLockedAnimeAt(team.locked_anime_at ?? team.locked_at ?? null);
+            setLockedCharactersAt(team.locked_characters_at ?? team.locked_at ?? null);
+            if (typeof team.remaining_kp === 'number') {
+              setBudget(team.remaining_kp);
+              if (team.locked_at && (prof?.total_kp === null || prof?.total_kp === 20000)) {
+                await supabase.from('profiles').update({ total_kp: team.remaining_kp }).eq('id', session.user.id);
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent('kalKpUpdate', { detail: { total_kp: team.remaining_kp } }));
+                }
+              }
+            }
+
+            const [{ data: picks }, { data: chars }] = await Promise.all([
+              supabase.from('team_picks').select('anime_id').eq('team_id', team.id),
+              supabase.from('character_picks').select('character_id,pick_type').eq('team_id', team.id)
+            ]);
+
+            setSelectedAnimeIds((picks ?? []).map(p => p.anime_id));
+            const star = (chars ?? []).find(c => c.pick_type === 'STAR_CHAR');
+            const waifu = (chars ?? []).find(c => c.pick_type === 'WAIFU_HUSBANDO');
+            setStarCharId(star?.character_id ?? null);
+            setWaifuId(waifu?.character_id ?? null);
+          }
+        }
       }
     };
     init();
@@ -242,6 +290,10 @@ export default function DraftPage() {
   };
 
   const toggleSelectAnime = (anime: Anime) => {
+    if (isAnimeLocked) {
+      showAlert("Anime Locked", "Your anime lineup is locked for this season. Use transfers for changes.");
+      return;
+    }
     if (selectedAnimeIds.includes(anime.id)) {
       setSelectedAnimeIds(prev => prev.filter(id => id !== anime.id));
       setBudget(prev => prev + anime.cost_kp);
@@ -260,6 +312,10 @@ export default function DraftPage() {
   };
 
   const toggleSelectCharacter = (char: Character, type: 'star' | 'waifu') => {
+    if (isCharactersLocked) {
+      showAlert("Characters Locked", "Your character picks are locked for this season.");
+      return;
+    }
     if (type === 'star') {
       if (starCharId === char.id) {
         setStarCharId(null);
@@ -297,13 +353,25 @@ export default function DraftPage() {
     }
   };
 
-  const handleSaveTeam = async () => {
+  const syncProfileKp = useCallback(async (kpValue: number) => {
+    if (!user) return;
+    await supabase.from('profiles').update({ total_kp: kpValue }).eq('id', user.id);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent('kalKpUpdate', { detail: { total_kp: kpValue } }));
+    }
+  }, [user]);
+
+  const handleLockAnime = async () => {
     if (!user) {
-      showAlert("Login Required", "Please log in to save your team.");
+      showAlert("Login Required", "Please log in to lock your anime lineup.");
       return;
     }
-    if (selectedAnimeIds.length === 0) {
-      showAlert("Picks Needed", "Select at least one series before saving.");
+    if (isAnimeLocked) {
+      showAlert("Anime Locked", "Your anime lineup is already locked.");
+      return;
+    }
+    if (selectedAnimeIds.length < 5) {
+      showAlert("Complete Lineup", "Pick 5 shows before locking your anime lineup.");
       return;
     }
 
@@ -317,7 +385,10 @@ export default function DraftPage() {
         .upsert({
           user_id: user.id,
           season_id: currentSeasonId,
-          remaining_kp: budget
+          remaining_kp: budget,
+          locked_anime_at: new Date().toISOString(),
+          locked_at: isCharactersLocked ? new Date().toISOString() : null,
+          free_transfers: 3
         }, { onConflict: 'user_id,season_id' })
         .select()
         .single();
@@ -329,6 +400,55 @@ export default function DraftPage() {
       const picks = selectedAnimeIds.map(id => ({ team_id: castedTeamId, anime_id: id }));
       await supabase.from('team_picks').insert(picks);
 
+      setIsAnimeLocked(true);
+      setLockedAnimeAt(new Date().toISOString());
+      await syncProfileKp(budget);
+      showAlert("Anime Locked", "Anime lineup locked. You can still set characters until you lock them.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error(err);
+      showAlert("System Error", message);
+    } finally {
+      setSaving(false);
+      setIsAnimeLockModalOpen(false);
+    }
+  };
+
+  const handleLockCharacters = async () => {
+    if (!user) {
+      showAlert("Login Required", "Please log in to lock your characters.");
+      return;
+    }
+    if (isCharactersLocked) {
+      showAlert("Characters Locked", "Your character picks are already locked.");
+      return;
+    }
+    if (!starCharId && !waifuId) {
+      showAlert("Add Characters", "Pick at least one character before locking characters.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentSeasonId = seasonInfo?.draftSeason?.id ?? seasonInfo?.activeSeason?.id;
+      if (!currentSeasonId) throw new Error("No active draft season identified.");
+
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .upsert({
+          user_id: user.id,
+          season_id: currentSeasonId,
+          remaining_kp: budget,
+          locked_characters_at: new Date().toISOString(),
+          locked_at: isAnimeLocked ? new Date().toISOString() : null,
+          free_transfers: 3
+        }, { onConflict: 'user_id,season_id' })
+        .select()
+        .single();
+
+      if (teamError) throw teamError;
+      const castedTeamId = teamData.id;
+
       await supabase.from('character_picks').delete().eq('team_id', castedTeamId);
       const charPicks = [];
       if (starCharId) charPicks.push({ team_id: castedTeamId, character_id: starCharId, pick_type: 'STAR_CHAR' });
@@ -337,13 +457,17 @@ export default function DraftPage() {
         await supabase.from('character_picks').insert(charPicks);
       }
 
-      showAlert("Team Saved", "Your team has been saved.");
+      setIsCharactersLocked(true);
+      setLockedCharactersAt(new Date().toISOString());
+      await syncProfileKp(budget);
+      showAlert("Characters Locked", "Character picks locked. Anime lineup remains as previously locked.");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error(err);
       showAlert("System Error", message);
     } finally {
       setSaving(false);
+      setIsCharLockModalOpen(false);
     }
   };
 
@@ -465,7 +589,11 @@ export default function DraftPage() {
                   className={`group relative bg-[var(--surface)] border rounded-2xl md:rounded-[2rem] overflow-hidden transition-all shadow-lg md:shadow-xl ${isSelected ? 'border-accent ring-2 md:ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
                   <div className="aspect-[3/4] overflow-hidden relative cursor-pointer" onClick={() => toggleSelectAnime(anime)}>
-                    <img src={anime.cover_image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100" alt={`${anime.title_english || anime.title_romaji} cover`} />
+                    <img
+                      src={anime.cover_image}
+                      alt={`${anime.title_english || anime.title_romaji} cover`}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-[0.85] group-hover:brightness-100"
+                    />
                     <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/60 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl border border-white/10">
                       <p className="text-[8px] md:text-[10px] font-black text-white italic">{anime.cost_kp.toLocaleString()} KP</p>
                     </div>
@@ -491,7 +619,7 @@ export default function DraftPage() {
                         <Star size={10} className="text-yellow-500 fill-yellow-500" />
                         <span className="text-[8px] md:text-[10px] font-black text-[var(--foreground)]">{anime.average_score || '??'}%</span>
                       </div>
-                      <button onClick={() => toggleSelectAnime(anime)} disabled={draftClosed} className={`px-3 py-1.5 md:px-5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-[var(--background)] text-[var(--muted)]' : 'bg-accent text-white'}`}>
+                      <button onClick={() => toggleSelectAnime(anime)} disabled={draftClosed || isAnimeLocked} className={`px-3 py-1.5 md:px-5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[9px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-[var(--background)] text-[var(--muted)]' : 'bg-accent text-white'} ${draftClosed || isAnimeLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         {isSelected ? 'Remove' : 'Draft'}
                       </button>
                     </div>
@@ -512,7 +640,11 @@ export default function DraftPage() {
                   className={`group relative bg-[var(--surface)] border rounded-2xl md:rounded-[2rem] overflow-hidden transition-all shadow-lg md:shadow-xl ${isSelected ? 'border-accent ring-2 md:ring-4 ring-accent/10 bg-accent/5' : 'border-[var(--border)]'}`}
                 >
                   <div className="aspect-[3/4] overflow-hidden relative cursor-pointer" onClick={() => setSelectedCharacter(char)}>
-                    <img src={char.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={`${char.name} profile`} />
+                    <img
+                      src={char.image}
+                      alt={`${char.name} profile`}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
                     <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/60 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl border border-white/10">
                       <p className="text-[8px] md:text-[10px] font-black text-white italic">{char.price.toLocaleString()} KP</p>
                     </div>
@@ -537,10 +669,10 @@ export default function DraftPage() {
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 md:gap-2">
-                      <button onClick={() => toggleSelectCharacter(char, 'star')} disabled={draftClosed} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                      <button onClick={() => toggleSelectCharacter(char, 'star')} disabled={draftClosed || isCharactersLocked} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isStar ? 'bg-yellow-500 text-black' : 'bg-[var(--surface-hover)] text-[var(--muted)]'} ${draftClosed || isCharactersLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         Recruit
                       </button>
-                      <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'}`}>
+                      <button onClick={() => toggleSelectCharacter(char, 'waifu')} disabled={draftClosed || isCharactersLocked} className={`py-1.5 md:py-2 rounded-lg md:rounded-xl text-[7px] md:text-[8px] font-black uppercase tracking-widest transition-all ${isWaifu ? 'bg-pink-500 text-white' : 'bg-[var(--surface-hover)] text-[var(--muted)]'} ${draftClosed || isCharactersLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         {char.role === 'Waifu' ? 'Pick' : char.role === 'Husbando' ? 'Pick' : 'Select'}
                       </button>
                     </div>
@@ -567,7 +699,13 @@ export default function DraftPage() {
                       const anime = animeList.find(a => a.id === id);
                       return (
                         <div key={id} className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 md:border-4 border-black bg-[var(--surface)] overflow-hidden shadow-xl">
-                          <img src={anime?.cover_image} className="w-full h-full object-cover" alt="pick" />
+                          {anime?.cover_image && (
+                            <img
+                              src={anime.cover_image}
+                              className="w-full h-full object-cover"
+                              alt="pick"
+                            />
+                          )}
                         </div>
                       );
                     })}
@@ -577,10 +715,44 @@ export default function DraftPage() {
                     <p className="text-sm md:text-xl font-black italic text-white uppercase tracking-tighter">{selectedAnimeIds.length}/5 Selected</p>
                   </div>
                 </div>
-                <button onClick={handleSaveTeam} disabled={saving || draftClosed} className="w-full md:w-auto px-6 md:px-10 py-3.5 md:py-4 bg-accent text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] rounded-xl md:rounded-2xl shadow-xl flex items-center justify-center gap-2 md:gap-3">
-                  {saving ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
-                  {saving ? 'SAVING...' : 'CONFIRM TEAM'}
-                </button>
+                <div className="flex flex-col md:flex-row gap-3 md:gap-4 w-full md:w-auto">
+                  <div className="flex-1 flex flex-col gap-2">
+                    {isAnimeLocked && (
+                      <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-green-400 text-center md:text-left">
+                        Anime locked {lockedAnimeAt ? new Date(lockedAnimeAt).toLocaleString() : ""}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (draftClosed) return showAlert("Draft Closed", "The draft window is closed for this season.");
+                        setIsAnimeLockModalOpen(true);
+                      }}
+                      disabled={saving || draftClosed || isAnimeLocked}
+                      className="w-full px-6 md:px-8 py-3.5 md:py-4 bg-accent text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] rounded-xl md:rounded-2xl shadow-xl flex items-center justify-center gap-2 md:gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {saving && isAnimeLockModalOpen ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
+                      {isAnimeLocked ? 'Anime Locked' : 'Lock Anime'}
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2">
+                    {isCharactersLocked && (
+                      <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-yellow-400 text-center md:text-left">
+                        Chars. locked {lockedCharactersAt ? new Date(lockedCharactersAt).toLocaleString() : ""}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (draftClosed) return showAlert("Draft Closed", "The draft window is closed for this season.");
+                        setIsCharLockModalOpen(true);
+                      }}
+                      disabled={saving || draftClosed || isCharactersLocked}
+                      className="w-full px-6 md:px-8 py-3.5 md:py-4 bg-[var(--surface)] text-[var(--foreground)] font-black text-[10px] md:text-xs uppercase tracking-[0.2em] rounded-xl md:rounded-2xl shadow-xl flex items-center justify-center gap-2 md:gap-3 border border-[var(--border)] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {saving && isCharLockModalOpen ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
+                      {isCharactersLocked ? 'Characters Locked' : 'Lock Characters'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -599,7 +771,13 @@ export default function DraftPage() {
       >
         <div className="flex flex-col md:flex-row gap-10 items-start">
           <div className="w-full md:w-56 aspect-[3/4.5] rounded-3xl overflow-hidden border-4 border-black shadow-2xl shrink-0">
-            <img src={selectedCharacter?.image} className="w-full h-full object-cover" alt={selectedCharacter?.name} />
+            {selectedCharacter?.image && (
+              <img
+                src={selectedCharacter.image}
+                className="w-full h-full object-cover"
+                alt={selectedCharacter?.name ?? "Character"}
+              />
+            )}
           </div>
           <div className="grow space-y-6">
             <div className="flex flex-wrap gap-2">
@@ -645,6 +823,72 @@ export default function DraftPage() {
                 <NeonButton onClick={() => setSelectedCharacter(null)} className="w-full py-3 text-[10px]">Close Details</NeonButton>
               </div>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isAnimeLockModalOpen}
+        onClose={() => setIsAnimeLockModalOpen(false)}
+        title="Lock Anime Lineup"
+      >
+        <div className="space-y-4">
+          <p className="font-bold uppercase text-sm tracking-wide text-[var(--muted)]">
+            Locking your 5-show lineup freezes anime swaps until transfers open. You can still set characters separately.
+          </p>
+          <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 flex items-center gap-3">
+            <Info className="text-accent shrink-0" size={18} />
+            <p className="text-xs font-semibold text-[var(--foreground)]">
+              Ensure all 5 slots are filled and budget looks right before locking.
+            </p>
+          </div>
+          <div className="flex flex-col md:flex-row gap-3">
+            <button
+              onClick={() => setIsAnimeLockModalOpen(false)}
+              className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-[var(--border)] text-[var(--muted)] font-black uppercase tracking-[0.2em] hover:text-[var(--foreground)]"
+            >
+              Keep Editing
+            </button>
+            <NeonButton
+              className="w-full md:w-1/2 text-center py-3"
+              disabled={saving}
+              onClick={handleLockAnime}
+            >
+              {saving ? <Loader2 className="animate-spin" size={16} /> : "Lock Anime"}
+            </NeonButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isCharLockModalOpen}
+        onClose={() => setIsCharLockModalOpen(false)}
+        title="Lock Character Picks"
+      >
+        <div className="space-y-4">
+          <p className="font-bold uppercase text-sm tracking-wide text-[var(--muted)]">
+            Locking characters freezes your hero/waifu picks. You can only change them later via transfers or admin events.
+          </p>
+          <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 flex items-center gap-3">
+            <Info className="text-accent shrink-0" size={18} />
+            <p className="text-xs font-semibold text-[var(--foreground)]">
+              Make sure your star and waifu/husbando choices fit your KP budget before locking.
+            </p>
+          </div>
+          <div className="flex flex-col md:flex-row gap-3">
+            <button
+              onClick={() => setIsCharLockModalOpen(false)}
+              className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-[var(--border)] text-[var(--muted)] font-black uppercase tracking-[0.2em] hover:text-[var(--foreground)]"
+            >
+              Keep Editing
+            </button>
+            <NeonButton
+              className="w-full md:w-1/2 text-center py-3"
+              disabled={saving}
+              onClick={handleLockCharacters}
+            >
+              {saving ? <Loader2 className="animate-spin" size={16} /> : "Lock Characters"}
+            </NeonButton>
           </div>
         </div>
       </Modal>

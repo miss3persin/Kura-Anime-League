@@ -12,6 +12,10 @@ VALUES
   (
     'site_announcement',
     '{"visible": false, "message": "", "ctaLabel": "", "ctaLink": ""}'
+  ),
+  (
+    'leveling_config',
+    '{"base_kp":1500,"growth_rate":1.18}'
   )
 ON CONFLICT (key) DO NOTHING;
 
