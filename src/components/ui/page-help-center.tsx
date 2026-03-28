@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { CircleHelp, Sparkles } from "lucide-react";
+import { CircleHelp, Sparkles, Send, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { getPageHelp } from "@/lib/page-help";
@@ -137,6 +137,34 @@ export const PageHelpCenter = ({
                                 </li>
                             ))}
                         </ul>
+                    </section>
+
+                    <section className="space-y-3">
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-accent">Reach the dev</h4>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <a
+                                href="http://t.me/miss3persin"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-[var(--foreground)] transition-all hover:border-accent/40 hover:bg-accent/10"
+                            >
+                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                                    <Send size={16} />
+                                </span>
+                                Telegram
+                            </a>
+                            <a
+                                href="https://x.com/miss3persin"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-[var(--foreground)] transition-all hover:border-accent/40 hover:bg-accent/10"
+                            >
+                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                                    <X size={16} />
+                                </span>
+                                X / Twitter
+                            </a>
+                        </div>
                     </section>
                 </div>
             </Modal>

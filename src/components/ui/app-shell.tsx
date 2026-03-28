@@ -106,6 +106,8 @@ const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
     }
 ];
 
+const EMPTY_NOTIFICATIONS: NotificationItem[] = [];
+
 
 const formatTimeAgo = (timestamp?: string) => {
     if (!timestamp) return 'just now';
@@ -126,7 +128,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const [profile, setProfile] = useState<ProfileState>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [authSession, setAuthSession] = useState<Session | null>(null);
-    const [notifications, setNotifications] = useState<NotificationItem[]>(SAMPLE_NOTIFICATIONS);
+    const [notifications, setNotifications] = useState<NotificationItem[]>(EMPTY_NOTIFICATIONS);
     const [, setNotificationPreferences] = useState<NotificationPreferences>({
         pushEnabled: true,
         emailEnabled: true
@@ -149,6 +151,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             return;
         }
         setLoadingNotifications(true);
+        setNotifications(EMPTY_NOTIFICATIONS);
         try {
             const headers: Record<string, string> = {
                 Authorization: `Bearer ${authSession.access_token}`
@@ -159,7 +162,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             });
             const payload = await response.json().catch(() => ({}));
             if (response.status === 401) {
-                setNotifications(SAMPLE_NOTIFICATIONS);
+                setNotifications(EMPTY_NOTIFICATIONS);
                 return;
             }
             if (!response.ok) {
@@ -181,7 +184,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             setNotifications(filteredNotifications);
         } catch (error) {
             console.error('Failed to load notifications', error);
-            setNotifications((prev) => (prev.length ? prev : SAMPLE_NOTIFICATIONS));
+            setNotifications((prev) => (prev.length ? prev : EMPTY_NOTIFICATIONS));
         } finally {
             setLoadingNotifications(false);
         }
@@ -605,30 +608,53 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                 </main>
 
                 {/* Mobile Bottom Navigation */}
-                <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] px-6 py-3 pb-6 flex items-center justify-between">
-                    {[
-                        { icon: Home, label: 'Home', href: '/' },
-                        { icon: Shield, label: 'Team', href: '/squad' },
-                        { icon: LayoutGrid, label: 'Draft', href: '/draft' },
-                        { icon: Activity, label: 'Trends', href: '/hype' },
-                        { icon: User, label: 'Profile', href: '/profile' },
-                    ].map((item) => {
-                        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-                        const Icon = item.icon;
-                        return (
-                            <button
-                                key={item.label}
-                                onClick={() => router.push(item.href)}
-                                className={cn(
-                                    "flex flex-col items-center gap-1 transition-all",
-                                    isActive ? "text-accent" : "text-[var(--muted)]"
-                                )}
-                            >
-                                <Icon size={20} style={isActive ? { color: accentColor } : {}} />
-                                <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
-                            </button>
-                        );
-                    })}
+                <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] px-6 pt-3 pb-5 flex flex-col gap-3">
+                    <div className="flex items-center justify-center gap-3">
+                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[var(--muted)]">Reach me</span>
+                        <a
+                            href="http://t.me/miss3persin"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Telegram"
+                            className="w-8 h-8 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] flex items-center justify-center hover:text-accent hover:border-accent/40 hover:bg-accent/10 transition-all"
+                        >
+                            <Send size={14} />
+                        </a>
+                        <a
+                            href="https://x.com/miss3persin"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="X"
+                            className="w-8 h-8 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] flex items-center justify-center hover:text-accent hover:border-accent/40 hover:bg-accent/10 transition-all"
+                        >
+                            <X size={14} />
+                        </a>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        {[
+                            { icon: Home, label: 'Home', href: '/' },
+                            { icon: Shield, label: 'Team', href: '/squad' },
+                            { icon: LayoutGrid, label: 'Draft', href: '/draft' },
+                            { icon: Activity, label: 'Trends', href: '/hype' },
+                            { icon: User, label: 'Profile', href: '/profile' },
+                        ].map((item) => {
+                            const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                            const Icon = item.icon;
+                            return (
+                                <button
+                                    key={item.label}
+                                    onClick={() => router.push(item.href)}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 transition-all",
+                                        isActive ? "text-accent" : "text-[var(--muted)]"
+                                    )}
+                                >
+                                    <Icon size={20} style={isActive ? { color: accentColor } : {}} />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </nav>
 
                 {/* Mini Footer */}
