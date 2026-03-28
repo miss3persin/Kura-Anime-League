@@ -7,6 +7,7 @@ import { NeonButton } from "@/components/ui/neon-button";
 import { TrendingUp, TrendingDown, Loader2, ChevronLeft, ChevronRight, X, Swords, Trophy, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { supabase } from "@/lib/supabase/client";
 import { SeasonPhaseBanner } from "@/components/ui/season-banner";
 import { Modal } from "@/components/ui/modal";
@@ -54,15 +55,26 @@ const DEFAULT_ANNOUNCEMENT: AnnouncementContent = {
   tone: "default"
 };
 
-const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementTone, string> = {
-  default: "border-white/10 bg-white/5 text-white/80",
-  accent: "border-sky-500/40 bg-sky-500/10 text-sky-100",
-  warning: "border-red-500/40 bg-red-500/10 text-red-100"
+const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementTone, { light: string; dark: string }> = {
+  default: {
+    light: "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]",
+    dark: "border-white/10 bg-white/5 text-white/80"
+  },
+  accent: {
+    light: "border-sky-500/40 bg-sky-500/10 text-sky-700",
+    dark: "border-sky-500/40 bg-sky-500/10 text-sky-100"
+  },
+  warning: {
+    light: "border-red-500/40 bg-red-700/85 text-white",
+    dark: "border-red-500/40 bg-red-500/10 text-red-100"
+  }
 };
 
 export default function Home() {
   const router = useRouter();
   const { seasonInfo } = useSeasonTimeline();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [carouselAnime, setCarouselAnime] = useState<Anime[]>([]);
   const [trendingShows, setTrendingShows] = useState<Anime[]>([]);
   const [marketPulseAnime, setMarketPulseAnime] = useState<Anime[]>([]);
@@ -80,7 +92,18 @@ export default function Home() {
   const showLeaderboard = displayConfig.showLeaderboardPreview ?? true;
   const showTimelineEntries = displayConfig.showSeasonTimeline ?? true;
   const disableWelcomeModal = displayConfig.disableWelcomeModal ?? false;
-  const announcementToneClass = ANNOUNCEMENT_TONE_CLASSES[announcement.tone ?? "default"];
+  const isDark = mounted ? resolvedTheme === "dark" : true;
+  const announcementToneClass =
+    ANNOUNCEMENT_TONE_CLASSES[announcement.tone ?? "default"][isDark ? "dark" : "light"];
+  const heroCardClass =
+    "rounded-2xl md:rounded-[3rem] border border-[var(--border)] p-6 md:p-8 text-center shadow-2xl space-y-3 " +
+    (isDark
+      ? "bg-gradient-to-br from-accent/10 via-black/20 to-black/60 text-[var(--foreground)]"
+      : "bg-gradient-to-br from-amber-50 via-white to-rose-100 text-slate-900");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -410,12 +433,20 @@ export default function Home() {
         <SeasonPhaseBanner showTimelineEntries={showTimelineEntries} />
 
         {heroContent.visible && (
-          <div className="rounded-2xl md:rounded-[3rem] border border-[var(--border)] bg-gradient-to-br from-accent/10 via-black/20 to-black/60 p-6 md:p-8 text-center shadow-2xl space-y-3">
+          <div className={heroCardClass}>
             <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[var(--muted)]">Hero Broadcast</p>
-            <h2 className="text-xl md:text-3xl font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-white">
+            <h2
+              className={`text-xl md:text-3xl font-black uppercase tracking-[0.2em] md:tracking-[0.3em] ${
+                isDark ? "text-white" : "text-slate-900"
+              }`}
+            >
               {heroContent.headline ?? DEFAULT_HERO_CONTENT.headline}
             </h2>
-            <p className="text-[var(--muted)] text-xs md:text-sm leading-relaxed">
+            <p
+              className={`text-xs md:text-sm leading-relaxed ${
+                isDark ? "text-[var(--muted)]" : "text-slate-600"
+              }`}
+            >
               {heroContent.subtitle ?? DEFAULT_HERO_CONTENT.subtitle}
             </p>
             {heroContent.cta && (
@@ -613,7 +644,7 @@ export default function Home() {
                           <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[var(--foreground)]">01. Build your lineup</p>
                           <p className="text-[var(--muted)] text-[11px] md:text-xs leading-relaxed font-medium">
                             Draft five shows within the 20,000 KP budget. Balance hype and value.
-                            <span className="text-accent italic"> Drafts lock Friday at 12:00 UTC.</span>
+                            {/* <span className="text-accent italic"> Drafts lock Friday at 12:00 UTC.</span> */}
                           </p>
                         </div>
                         <div className="space-y-2 md:space-y-4">
